@@ -1,4 +1,4 @@
-# ER Studio
+# Even Realities Studio
 
 **An integrated development environment for Even Realities G2 smart glasses.**
 
