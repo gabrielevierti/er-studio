@@ -1,31 +1,38 @@
-# ER Studio
+# Even Realities Studio
 
 **An integrated development environment for Even Realities G2 smart glasses.**
 
-Editor, file explorer, live glasses display, simulator control, console, terminal, metrics and packaging — one window, tailored end-to-end for Even Hub development.
+Editor, file explorer, live glasses display, simulator control, console, terminal, metrics and packaging — all in one window.
 
 ![Even Realities Studio](3.png)
 
 ## Why this exists
 
-The official Even Hub toolchain is solid: a web-based SDK, a desktop simulator, a CLI for packaging. But the workflow it produces is fragmented. You write code in your editor, run Vite in a terminal, launch the simulator in its own window, read app logs somewhere else, and keep a browser tab open on the side. Four surfaces for one task, constant window juggling, and every RUN cycle means re-orchestrating all of them by hand.
+The official Even Hub toolchain is solid: a web-based SDK, a desktop simulator, a CLI for packaging. But the workflow it produces is fragmented. 
+You write code in your editor, run Vite in a terminal, launch the simulator in its own window, read app logs somewhere else, and keep a browser tab open on the side. 
+Four surfaces for one task, constant window juggling, and every run cycle means re-orchestrating all of them by hand - which i found a bit finicky to be honest.
 
-I wanted what Android developers have had for a decade: open one application, write code, press RUN, and see the device screen right next to the editor. Nothing like that existed for the G2 — so I built it.
+I wanted what Android developers have had for a decade: open one application, write code, press RUN, and see the device screen right next to the editor. 
 
-ER Studio is that missing piece. It doesn't replace the official tooling; it orchestrates it. Under the hood it drives the real `evenhub-simulator`, the real Vite dev server, and the real `evenhub-cli` — you just never have to touch them directly.
+Nothing like that existed for the G2 — so I decided to build it.
 
-## The key insight
+ER Studio (formally Even Realities Studio) is that missing piece. 
+It doesn't replace the official tooling; it orchestrates it. 
+Under the hood it drives the real `evenhub-simulator`, the real Vite dev server, and the real `evenhub-cli` — you just never have to touch them directly.
 
-The simulator can't be embedded — it's a native LVGL window. But since v0.7.0 it ships an **HTTP automation control plane**: launch it with `--automation-port` and it exposes the glasses framebuffer as a PNG, the app's console buffer, and TouchBar input injection over plain HTTP.
+## The theory behind it
+
+The simulator itself can't be embedded — it's a native LVGL window, but since v0.7.0 it ships an **HTTP automation control plane**: if you launch it with `--automation-port` it exposes the glasses framebuffer as a PNG, the app's console buffer, and TouchBar input injection over plain HTTP.
 
 ER Studio runs the simulator as a hidden, managed child process and rebuilds the entire experience on top of that API:
 
 - the **glasses display** in the app is a live mirror of the real framebuffer, polled continuously
 - the **TouchBar pad** injects real `up / down / click / double_click` events
-- the **glasses console** streams the app's `console.*` output, uncaught exceptions and failed fetches
+- the **glasses console** streams the app's `console.*` output, uncaught exceptions and failed fetches, thus proving us with real debugging
 - **metrics** are computed from the same data — lit pixels, frame deltas, boot-to-first-render
 
-The simulator window itself gets hidden the moment it appears. You develop against its mirror, inside ER Studio, and never look at it again.
+The simulator window itself gets hidden the moment it appears. 
+You develop against its mirror, inside ER Studio, and never look at it again - pretend it doesn't exist. :P
 
 ## What it does
 
