@@ -1,12 +1,10 @@
-# Even Realities Studio
+# ER Studio
 
 **An integrated development environment for Even Realities G2 smart glasses.**
 
 Editor, file explorer, live glasses display, simulator control, console, terminal, metrics and packaging — one window, tailored end-to-end for Even Hub development.
 
-![First launch](1.png)
-
----
+![Even Realities Studio](3.png)
 
 ## Why this exists
 
@@ -31,8 +29,6 @@ The simulator window itself gets hidden the moment it appears. You develop again
 
 ## What it does
 
-![Project created](2.png)
-
 **Project lifecycle**
 - Scaffold new projects from the official `evenhub-templates` (minimal, asr, image, text-heavy) — degit clone and `npm install` handled for you
 - One-click **RUN**: starts the Vite dev server, detects its port from stdout, launches the simulator against it. **STOP** kills both process groups cleanly, **RESTART** recycles the session
@@ -40,16 +36,12 @@ The simulator window itself gets hidden the moment it appears. You develop again
 
 **Writing code**
 
-![Editing](3.png)
-
 - Monaco editor (the engine inside VS Code), fully vendored — no CDN, works offline
 - TypeScript and JavaScript IntelliSense, plus highlighting and completion for HTML, CSS/SCSS, JSON, Markdown, YAML, XML and shell
 - Auto-indentation, bracket pairing and colorization, format on paste, Cmd+S to save, dirty-state tabs, auto-save on RUN
 - File explorer with create, rename, delete and move via context menu — backed by a filesystem watcher, so the tree updates itself when scaffolds finish, terminal commands touch files, or anything changes externally
 
 **Running and debugging**
-
-![Running in the simulator](4.png)
 
 - Live 576×288 glasses display mirror with optional glow, pixel-perfect capture to PNG
 - TouchBar input pad: swipe up, swipe down, tap, double tap
@@ -109,10 +101,10 @@ On first simulator launch, macOS will ask permission for ER Studio to control Sy
 
 ## Honest limits
 
-- The simulator is **not a hardware emulator** — frame pacing, BLE timing and on-device performance are not reproduced, and the metrics panel describes the simulator session, not the glasses. Always validate on real hardware before submission.
-- The mirror's frame rate is bounded by how fast the simulator serves screenshots.
+- The simulator is **not a hardware emulator** — frame pacing, BLE timing and on-device performance are not reproduced, and the metrics panel describes the simulator session, not the glasses themselves - this needs to be fixed, but i can't test it since i have no real glasses at the moment.
+- The mirror's frame rate is limited by how fast the simulator serves screenshots - would be nice to cap it to the actual speed of the glasses.
 - The interactive pty terminal depends on `node-pty` building on your machine; when it can't, ER Studio degrades to a line-based command runner automatically.
-- macOS only for now. The server core is platform-neutral; window hiding and focus recapture are the macOS-specific parts.
+- macOS only for now. The server core is platform-neutral; window hiding and focus recapture are the macOS-specific parts, so help is very much welcome when it comes to windows, linux or anything else
 
 ## Roadmap
 
@@ -123,7 +115,22 @@ On first simulator launch, macOS will ask permission for ER Studio to control Sy
 
 ## Disclaimer
 
-ER Studio is an independent community project. It is not affiliated with, endorsed by, or supported by Even Realities. It orchestrates their publicly published npm packages and documented APIs. All trademarks belong to their respective owners.
+ER Studio is an independent community project, created by me, who doesn't do this for a living out of pure passion.
+It is not affiliated with, endorsed by, or supported by Even Realities. 
+It orchestrates their publicly published npm packages and documented APIs. 
+
+All trademarks belong to their respective owners.
+
+I would also like to state that at this current point in time i do NOT own a pair of even g2s.
+
+## Plans for the future
+
+- Ideally it would be cool to add some more metrics, relative to the BLE connection, completely eliminating the need for the phone to be there, at least in the development stage - this would allow for over the air development while wearing the glasses and working on the apps.
+- The ui is mature enough but it definitely needs some polish;
+
+## Contributing
+
+Please feel free to reach out, help, make pull requests, try the software out, add support for more things or quite literally anything else, it's always nice working with others! :) 
 
 ## License
 
