@@ -1,0 +1,48 @@
+{
+  "name": "er-studio",
+  "version": "0.2.2",
+  "description": "Even Realities Studio - integrated development environment for Even G2 (Even Hub) apps",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "app": "electron .",
+    "dist": "electron-builder --mac"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  },
+  "optionalDependencies": {
+    "node-pty": "^1.0.0"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "dev.gabriele.erstudio",
+    "productName": "ER Studio",
+    "files": [
+      "electron/**",
+      "server/**",
+      "public/**",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/node-pty/**"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "identity": null
+    },
+    "npmRebuild": false
+  },
+  "author": "Gabriele Vierti"
+}
