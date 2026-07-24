@@ -1,6 +1,8 @@
 import time
 import requests
-from PySide6.QtCore import Qt, QTimer
+import cv2
+
+from PySide6.QtCore import Qt, QTimer, QThread, Signal
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QSplitter,
     QTextEdit, QLabel, QPushButton, QComboBox, QFrame, QStackedWidget, QStatusBar
@@ -11,16 +13,73 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from er_studio.config import APP_NAME, APP_VERSION, GLASSES_WIDTH, GLASSES_HEIGHT, AUTOMATION_PORT
 from er_studio.simulator import Simulator
 
+class CameraThread(QThread):
+    # separate thread to get what the camera sees without blocking the ui
+    frame_signal = Signal(QImage)
+
+    def __init__(self):
+        super().__init__()
+        self.running = False
+
+    def run(self):
+        self.running = True
+        cap = cv2.VideoCapture(0)  # open the first webcam you can find
+        
+        while self.running and cap.isOpened():
+            ret, frame = cap.read()
+            if ret:
+                # convert bgr -> rgb
+                
+                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                
+                h, w, ch = rgb_frame.shape
+                
+                bytes_per_line = ch * w
+                
+                qt_img = QImage(rgb_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
+                
+                self.frame_signal.emit(qt_img)
+            self.msleep(30) # ~30 FPS
+            
+        cap.release()
+
+    def stop(self):
+        self.running = False
+        self.wait()
+
 class CameraWidget(QWidget):
-    # todo: simulated, please implement
+    # camera streaming under the app's content
     def __init__(self, parent=None):
+
         super().__init__(parent)
-        self.setStyleSheet("background-color: #1a1a24;")
+        
+        self.setStyleSheet("background-color: #000000;")
+        
         layout = QVBoxLayout(self)
-        label = QLabel("AR Background (Camera Feed Mock)", self)
-        label.setAlignment(Qt.AlignCenter)
-        label.setStyleSheet("color: #8a8a9e; font-size: 13px; font-weight: bold;")
-        layout.addWidget(label)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.video_label = QLabel(self)
+        self.video_label.setAlignment(Qt.AlignCenter)
+        
+        layout.addWidget(self.video_label)
+
+        self.thread = CameraThread()
+        self.thread.frame_signal.connect(self.update_camera_frame)
+
+    def start_camera(self):
+        if not self.thread.isRunning():
+            self.thread.start()
+
+    def stop_camera(self):
+        if self.thread.isRunning():
+            self.thread.stop()
+
+    def update_camera_frame(self, qt_img):
+        # scale camera frame to maintain aspect ratio of the glasses
+        scaled_pixmap = QPixmap.fromImage(qt_img).scaled(
+            GLASSES_WIDTH, GLASSES_HEIGHT, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
+        )
+        self.video_label.setPixmap(scaled_pixmap)
 
 class GlassesDisplayView(QFrame):
     def __init__(self, parent=None):
@@ -104,6 +163,10 @@ class GlassesDisplayView(QFrame):
 
     def _change_bg(self, index):
         self.stack.setCurrentIndex(index)
+        if index == 1:  # Se l'utente seleziona "Videocamera"
+            self.camera_bg.start_camera()
+        else:
+            self.camera_bg.stop_camera()
 
     def update_framebuffer(self, image_bytes):
         # update by getting the png from the sim
