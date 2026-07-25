@@ -90,6 +90,11 @@ async function startServer(options = {}) {
     });
   });
 
+  app.get('/api/version', (req, res) => {
+    const packageJson = require('../package.json');
+    res.json({ version: packageJson.version });
+  });
+
   app.use('/api/fs', createFilesRouter(workspace));
   app.use('/api/sim', createSimRouter(SIM_AUTOMATION_PORT));
 

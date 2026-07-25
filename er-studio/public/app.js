@@ -27,6 +27,21 @@ const state = {
   procLogCount: 0
 };
 
+/* ---------------- fetch version from the server ---------------- */
+
+async function fetchVersion() {
+  try {
+    const response = await fetch('/api/version');
+    const data = await response.json();
+    document.getElementById('version-display').textContent = data.version;
+  } catch (error) {
+    console.warn('Could not fetch version:', error);
+    document.getElementById('version-display').textContent = '—';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', fetchVersion);
+
 /* ---------------- toasts ---------------- */
 
 function toast(msg, isError) {

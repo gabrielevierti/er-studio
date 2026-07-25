@@ -1,6 +1,6 @@
 {
   "name": "er-studio",
-  "version": "0.2.2",
+  "version": "0.1.1",
   "description": "Even Realities Studio - integrated development environment for Even G2 (Even Hub) apps",
   "main": "electron/main.js",
   "scripts": {
@@ -23,8 +23,8 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "dev.gabriele.erstudio",
-    "productName": "ER Studio",
+    "appId": "dev.gabrielevierti.erstudio",
+    "productName": "Even Realities Studio",
     "files": [
       "electron/**",
       "server/**",

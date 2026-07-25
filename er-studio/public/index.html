@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ER Studio</title>
+<title>Ever Realities Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
 
 <header id="topbar">
   <div class="brand">ER<span class="brand-sep">://</span>STUDIO</div>
-  <div class="brand-sub">EVEN REALITIES DEV CONSOLE</div>
+  <div class="brand-sub">Version <span id="version-display">loading...</span></div>
 
   <div class="topbar-group">
     <label class="field-label" for="project-select">PROJECT</label>
@@ -42,11 +42,11 @@
 
   <aside id="sidebar">
     <div class="panel-head">
-      <span>EXPLORER</span>
+      <span>WORKSPACE</span>
       <span class="panel-actions">
         <button class="icon-btn" id="btn-new-file" title="New file">+F</button>
         <button class="icon-btn" id="btn-new-dir" title="New folder">+D</button>
-        <button class="icon-btn" id="btn-refresh-tree" title="Refresh">↻</button>
+        <button class="icon-btn" style="font-size: 14px;" id="btn-refresh-tree" title="Refresh">↻</button>
       </span>
     </div>
     <div id="file-tree" class="mono"></div>
@@ -56,7 +56,7 @@
     <div id="tabs"></div>
     <div id="monaco-host">
       <div id="editor-empty">
-        <div class="empty-mark">576 × 288</div>
+        <div class="empty-mark">ER STUDIO</div>
         <div>Select a file to edit, or create a project to begin.</div>
       </div>
     </div>
@@ -64,10 +64,10 @@
 
   <aside id="devices">
     <div class="panel-head">
-      <span>GLASSES DISPLAY</span>
+      <span>DISPLAY</span>
       <span class="panel-actions">
-        <label class="toggle"><input type="checkbox" id="chk-glow" checked> GLOW</label>
         <button class="icon-btn" id="btn-snap" title="Save framebuffer PNG">CAPTURE</button>
+        <label class="toggle"><input type="checkbox" id="chk-glow" checked> GLOW</label>
       </span>
     </div>
 
@@ -83,19 +83,19 @@
     </div>
 
     <div id="input-pad">
-      <div class="pad-label">TOUCHBAR INPUT</div>
+      <div class="pad-label">INPUT</div>
       <div class="pad-buttons">
-        <button class="btn pad-btn" data-action="up">SWIPE UP</button>
-        <button class="btn pad-btn" data-action="down">SWIPE DOWN</button>
-        <button class="btn pad-btn" data-action="click">TAP</button>
-        <button class="btn pad-btn" data-action="double_click">DOUBLE TAP</button>
+        <button class="btn pad-btn" data-action="up">UP</button>
+        <button class="btn pad-btn" data-action="down">DOWN</button>
+        <button class="btn pad-btn" data-action="click">CLICK</button>
+        <button class="btn pad-btn" data-action="double_click">DOUBLE CLICK</button>
       </div>
     </div>
 
     <div class="panel-head webview-head">
-      <span>PHONE WEBVIEW</span>
+      <span>WEBVIEW</span>
       <span class="panel-actions">
-        <button class="icon-btn" id="btn-webview-reload" title="Reload iframe">↻</button>
+        <button class="icon-btn" id="btn-webview-reload" style="font-size: 14px;" title="Reload iframe">↻</button>
         <a class="icon-btn" id="btn-webview-open" title="Open in new tab" target="_blank" rel="noopener">OPEN</a>
       </span>
     </div>
@@ -110,8 +110,8 @@
 <section id="dock">
   <div id="dock-tabs">
     <button class="dock-tab active" data-dock="terminal">TERMINAL</button>
-    <button class="dock-tab" data-dock="process">PROCESS LOG <span class="badge" id="badge-process"></span></button>
-    <button class="dock-tab" data-dock="glasses-console">GLASSES CONSOLE <span class="badge badge-err" id="badge-console"></span></button>
+    <button class="dock-tab" data-dock="process">CONSOLE<span class="badge" id="badge-process"></span></button>
+    <button class="dock-tab" data-dock="glasses-console">SIMULATOR CONSOLE <span class="badge badge-err" id="badge-console"></span></button>
     <button class="dock-tab" data-dock="metrics">METRICS</button>
     <span class="dock-spacer"></span>
     <button class="icon-btn" id="btn-dock-clear" title="Clear active panel">CLEAR</button>
@@ -129,15 +129,15 @@
 
   <div class="dock-panel" id="dock-metrics">
     <div id="metrics-grid">
-      <div class="metric"><div class="metric-label">SESSION UPTIME</div><div class="metric-value mono" id="m-uptime">—</div></div>
-      <div class="metric"><div class="metric-label">BOOT → FIRST RENDER</div><div class="metric-value mono" id="m-boot">—</div></div>
+      <div class="metric"><div class="metric-label">UPTIME</div><div class="metric-value mono" id="m-uptime">—</div></div>
+      <div class="metric"><div class="metric-label">BOOT -> FIRST RENDER</div><div class="metric-value mono" id="m-boot">—</div></div>
       <div class="metric"><div class="metric-label">LIT PIXELS</div><div class="metric-value mono" id="m-lit">—</div><div class="metric-sub mono" id="m-lit-pct"></div></div>
       <div class="metric"><div class="metric-label">FRAME DELTA</div><div class="metric-value mono" id="m-delta">—</div><div class="metric-sub">px changed vs previous sample</div></div>
-      <div class="metric"><div class="metric-label">MIRROR RATE</div><div class="metric-value mono" id="m-fps">—</div><div class="metric-sub mono" id="m-latency"></div></div>
+      <div class="metric"><div class="metric-label">LATENCY</div><div class="metric-value mono" id="m-fps">—</div><div class="metric-sub mono" id="m-latency"></div></div>
       <div class="metric"><div class="metric-label">CONSOLE ERRORS</div><div class="metric-value mono" id="m-errors">0</div><div class="metric-sub mono" id="m-warns">0 warnings</div></div>
       <div class="metric"><div class="metric-label">ER STUDIO HOST</div><div class="metric-value mono" id="m-host">—</div><div class="metric-sub">server RSS</div></div>
     </div>
-    <div class="metrics-note">Simulator metrics reflect the desktop simulator only. Frame pacing, BLE timing and on-device performance are not reproduced — validate on hardware before shipping.</div>
+    <div class="metrics-note">Simulator metrics reflect the desktop simulator only. Frame pacing, BLE timing and on-device performance are not reproduced and will be implemented in the future — always validate on real hardware before shipping.</div>
   </div>
 </section>
 
@@ -145,7 +145,7 @@
   <span id="status-workspace">workspace: —</span>
   <span id="status-file"></span>
   <span class="status-spacer"></span>
-  <span id="status-conn" data-state="off">WS DISCONNECTED</span>
+  <span id="status-conn" data-state="off">DISCONNECTED</span>
 </footer>
 
 <!-- New project modal -->
@@ -163,7 +163,7 @@
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="np-cancel">CANCEL</button>
-      <button class="btn btn-run" id="np-create">CREATE</button>
+      <button class="btn btn-run" id="np-create">CREATE NEW PROJECT</button>
     </div>
   </div>
 </div>
