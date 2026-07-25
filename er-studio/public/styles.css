@@ -33,7 +33,9 @@ html, body {
 
 body {
   display: grid;
-  grid-template-rows: 38px 1fr 262px 24px;
+  /* rows: topbar | main | dock splitter | dock | statusbar
+     panel sizes are CSS variables so the splitters can drive them */
+  grid-template-rows: 38px 1fr 5px var(--dock-h, 262px) 24px;
 }
 
 .mono { font-family: var(--mono); }
@@ -142,9 +144,21 @@ body.electron #topbar a {
 
 #layout {
   display: grid;
-  grid-template-columns: 236px minmax(0, 1fr) 404px;
+  /* columns: explorer | splitter | editor | splitter | devices */
+  grid-template-columns: var(--sidebar-w, 236px) 5px minmax(0, 1fr) 5px var(--devices-w, 404px);
   min-height: 0;
 }
+
+/* ---------- resizable panel splitters ---------- */
+
+.splitter {
+  background: var(--border);
+  flex-shrink: 0;
+  transition: background 0.1s;
+}
+.splitter-v { cursor: col-resize; }
+.splitter-h { cursor: row-resize; }
+.splitter:hover, .splitter.dragging { background: var(--accent-dim); }
 
 #sidebar, #devices {
   background: var(--panel);
@@ -152,8 +166,7 @@ body.electron #topbar a {
   flex-direction: column;
   min-height: 0;
 }
-#sidebar { border-right: 1px solid var(--border); }
-#devices { border-left: 1px solid var(--border); overflow-y: auto; }
+#devices { overflow-y: auto; }
 
 .panel-head {
   display: flex;
@@ -261,7 +274,6 @@ body.electron #topbar a {
   display: block;
   image-rendering: pixelated;
 }
-#lens.glow #glasses-canvas { filter: drop-shadow(0 0 6px rgba(70, 224, 138, 0.55)); }
 
 #lens-offline, #webview-offline {
   position: absolute; inset: 0;

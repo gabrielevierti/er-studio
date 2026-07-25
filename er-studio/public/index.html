@@ -52,6 +52,8 @@
     <div id="file-tree" class="mono"></div>
   </aside>
 
+  <div class="splitter splitter-v" id="split-sidebar" title="Drag to resize - double-click to reset"></div>
+
   <section id="editor-zone">
     <div id="tabs"></div>
     <div id="monaco-host">
@@ -62,12 +64,13 @@
     </div>
   </section>
 
+  <div class="splitter splitter-v" id="split-devices" title="Drag to resize - double-click to reset"></div>
+
   <aside id="devices">
     <div class="panel-head">
       <span>DISPLAY</span>
       <span class="panel-actions">
         <button class="icon-btn" id="btn-snap" title="Save framebuffer PNG">CAPTURE</button>
-        <label class="toggle"><input type="checkbox" id="chk-glow" checked> GLOW</label>
       </span>
     </div>
 
@@ -106,6 +109,8 @@
   </aside>
 
 </main>
+
+<div class="splitter splitter-h" id="split-dock" title="Drag to resize - double-click to reset"></div>
 
 <section id="dock">
   <div id="dock-tabs">

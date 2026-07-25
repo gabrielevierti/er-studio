@@ -592,9 +592,6 @@ async function mirrorTick() {
 // as soon as the previous one lands - throughput tracks the sim endpoint.
 setInterval(mirrorTick, 15);
 
-$('#chk-glow').addEventListener('change', ev => {
-  $('#lens').classList.toggle('glow', ev.target.checked);
-});
 $('#lens').classList.add('glow');
 
 $('#btn-snap').addEventListener('click', () => {
@@ -791,11 +788,72 @@ $('#np-create').addEventListener('click', async () => {
 
 $('#project-select').addEventListener('change', onProjectChange);
 
+
+/* ---------------- resizable panels ---------------- */
+
+function initSplitters() {
+  const root = document.documentElement;
+
+  // restore saved layout
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('er-layout') || '{}'); } catch { saved = {}; }
+  for (const [k, v] of Object.entries(saved)) root.style.setProperty(k, v);
+
+  function persist(cssVar, value) {
+    let store = {};
+    try { store = JSON.parse(localStorage.getItem('er-layout') || '{}'); } catch { store = {}; }
+    if (value === null) delete store[cssVar];
+    else store[cssVar] = value;
+    localStorage.setItem('er-layout', JSON.stringify(store));
+  }
+
+  function makeSplitter(el, cssVar, opts) {
+    if (!el) return; // markup missing - never break boot over a splitter
+
+    el.addEventListener('pointerdown', ev => {
+      ev.preventDefault();
+      el.setPointerCapture(ev.pointerId);
+      el.classList.add('dragging');
+      const startPos = opts.horizontal ? ev.clientY : ev.clientX;
+      const current = parseFloat(getComputedStyle(root).getPropertyValue(cssVar));
+      const startVal = Number.isFinite(current) ? current : opts.fallback;
+
+      const onMove = e => {
+        const pos = opts.horizontal ? e.clientY : e.clientX;
+        let val = startVal + (pos - startPos) * (opts.invert ? -1 : 1);
+        val = Math.max(opts.min, Math.min(opts.max, val));
+        root.style.setProperty(cssVar, val + 'px');
+        if (fitAddon) fitAddon.fit(); // keep xterm cols/rows in sync while dragging
+      };
+      const onUp = () => {
+        el.classList.remove('dragging');
+        el.removeEventListener('pointermove', onMove);
+        el.removeEventListener('pointerup', onUp);
+        persist(cssVar, getComputedStyle(root).getPropertyValue(cssVar).trim());
+      };
+      el.addEventListener('pointermove', onMove);
+      el.addEventListener('pointerup', onUp);
+    });
+
+    // double-click a splitter = reset that panel to its default size
+    el.addEventListener('dblclick', () => {
+      root.style.removeProperty(cssVar);
+      persist(cssVar, null);
+      if (fitAddon) fitAddon.fit();
+    });
+  }
+
+  makeSplitter($('#split-sidebar'), '--sidebar-w', { min: 160, max: 520, fallback: 236 });
+  makeSplitter($('#split-devices'), '--devices-w', { min: 280, max: 720, fallback: 404, invert: true });
+  makeSplitter($('#split-dock'),    '--dock-h',    { min: 120, max: 600, fallback: 262, invert: true, horizontal: true });
+}
+
 /* ---------------- boot ---------------- */
 
 (async function boot() {
   if (navigator.userAgent.includes('Electron')) document.body.classList.add('electron');
   connectWs();
+  try { initSplitters(); } catch (e) { console.error('splitters:', e); }
   try { initTerminal(); } catch (e) { toast('Terminal init failed: ' + e.message, true); }
   try { await initMonaco(); } catch (e) { toast('Editor init failed: ' + e.message, true); }
   try {
