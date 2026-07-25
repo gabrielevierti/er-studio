@@ -8,7 +8,7 @@
 
 Editor, file explorer, live glasses display, simulator control, console, terminal, metrics and packaging — all in one window.
 
-![Even Realities Studio](4.gif)
+![Even Realities Studio](4.png)
 
 ## Why this exists
 
