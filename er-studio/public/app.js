@@ -202,7 +202,7 @@ async function loadProjects() {
   if (data.projects.length === 0) {
     const opt = document.createElement('option');
     opt.value = '';
-    opt.textContent = '(no projects - create one)';
+    opt.textContent = 'new project';
     sel.appendChild(opt);
   }
   for (const p of data.projects) {
