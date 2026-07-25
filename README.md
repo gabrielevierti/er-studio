@@ -1,6 +1,6 @@
 # Even Realities Studio
 
-![Version](https://img.shields.io/github/package-json/v/gabrielevierti/er-studio)
+![Version](https://img.shields.io/github/package-json/v/gabrielevierti/er-studio?filename=er-studio/package.json)
 
 **An integrated development environment for Even Realities G2 smart glasses.**
 
