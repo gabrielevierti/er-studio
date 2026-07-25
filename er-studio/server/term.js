@@ -45,26 +45,55 @@ function attachTerminal(ws, workspaceRoot, send) {
     }
   }
 
-  // Fallback: run one command per line, stream output. Not interactive.
+  // Fallback: line-based command runner. node-pty normally provides echo and
+  // line editing; without it we implement a minimal line discipline here:
+  // buffer keystrokes, echo them, handle Backspace/Ctrl+C, execute on Enter.
   send({
     type: 'term-mode',
     mode: 'exec',
-    note: 'Interactive shell unavailable (node-pty missing or failed to spawn) - fallback command runner active. One command per line, output streams below. Fix: chmod +x node_modules/node-pty/build/Release/spawn-helper, or npm rebuild node-pty, then restart.'
+    note: 'Interactive shell unavailable (node-pty missing or failed to spawn) - fallback command runner active. One command per line. Fix: chmod +x node_modules/node-pty/build/Release/spawn-helper, or npm rebuild node-pty (Node 22 LTS recommended), then restart.'
   });
+
   let child = null;
+  let buffer = '';
+  const PROMPT = '$ ';
+  const echo = data => send({ type: 'term-data', data });
+  echo('\r\n' + PROMPT);
+
+  function execute(cmd) {
+    if (child) { echo('[busy - previous command still running]\r\n'); return; }
+    if (!cmd.trim()) { echo(PROMPT); return; }
+    child = spawn('/bin/sh', ['-c', cmd], { cwd: workspaceRoot, env: process.env });
+    child.stdout.on('data', d => echo(d.toString('utf8').replace(/\n/g, '\r\n')));
+    child.stderr.on('data', d => echo(d.toString('utf8').replace(/\n/g, '\r\n')));
+    child.on('exit', code => {
+      echo(`\r\n[exit ${code}]\r\n` + PROMPT);
+      child = null;
+    });
+  }
+
   return {
-    write(line) {
-      const cmd = String(line).replace(/\r?\n$/, '');
-      if (!cmd.trim()) return;
-      if (child) { send({ type: 'term-data', data: '\r\n[busy - previous command still running]\r\n' }); return; }
-      send({ type: 'term-data', data: `\r\n$ ${cmd}\r\n` });
-      child = spawn('/bin/sh', ['-c', cmd], { cwd: workspaceRoot, env: process.env });
-      child.stdout.on('data', d => send({ type: 'term-data', data: d.toString('utf8').replace(/\n/g, '\r\n') }));
-      child.stderr.on('data', d => send({ type: 'term-data', data: d.toString('utf8').replace(/\n/g, '\r\n') }));
-      child.on('exit', code => {
-        send({ type: 'term-data', data: `\r\n[exit ${code}]\r\n` });
-        child = null;
-      });
+    write(data) {
+      const str = String(data);
+      // Arrow keys etc. arrive as escape sequences in their own chunk - drop them.
+      if (str.startsWith('\x1b')) return;
+      for (const ch of str) {
+        if (ch === '\r' || ch === '\n') {           // Enter
+          echo('\r\n');
+          const cmd = buffer;
+          buffer = '';
+          execute(cmd);
+        } else if (ch === '\x7f' || ch === '\b') {  // Backspace
+          if (buffer.length > 0) { buffer = buffer.slice(0, -1); echo('\b \b'); }
+        } else if (ch === '\x03') {                 // Ctrl+C
+          if (child) { try { child.kill('SIGINT'); } catch { /* noop */ } }
+          buffer = '';
+          echo('^C\r\n' + PROMPT);
+        } else if (ch >= ' ' || ch === '\t') {      // printable
+          buffer += ch;
+          echo(ch);
+        }
+      }
     },
     resize() { /* noop */ },
     dispose() { if (child) { try { child.kill('SIGTERM'); } catch { /* noop */ } } }
