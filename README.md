@@ -1,8 +1,8 @@
 # Even Realities Studio
 
-![Version](https://img.shields.io/github/package-json/v/gabrielevierti/er-studio?filename=er-studio/package.json)
-![Platform](https://img.shields.io/badge/platform-macOS-lightgrey)
-![License](https://img.shields.io/badge/license-MIT-green)
+[![Version](https://img.shields.io/github/package-json/v/gabrielevierti/er-studio?filename=er-studio/package.json)](https://github.com/gabrielevierti/er-studio)
+[![Platform](https://img.shields.io/badge/platform-macOS-lightgrey)](https://github.com/gabrielevierti/er-studio)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENCE)
 
 **An integrated development environment for Even Realities G2 smart glasses.**
 
@@ -43,11 +43,13 @@ Nothing is emulated and nothing is faked: the pixels are the simulator's pixels,
 ## What it does
 
 **Project lifecycle**
+
 - Scaffold new projects from the official `evenhub-templates` (minimal, asr, image, text-heavy) — degit clone and `npm install` handled for you
 - One-click **RUN**: starts the Vite dev server, detects its port from stdout, launches the simulator against it. **STOP** kills both process groups cleanly, **RESTART** recycles the session
 - One-click **PACK**: runs the production build and `evenhub-cli pack app.json dist`, producing the `.ehpk` ready for the developer portal
 
 **Writing code**
+
 - Monaco editor (the engine inside VS Code), fully vendored — no CDN, works offline
 - TypeScript and JavaScript IntelliSense, plus highlighting and completion for HTML, CSS/SCSS, JSON, Markdown, YAML, XML and shell
 - Auto-indentation, bracket pairing and colorization, format on paste, Cmd+S to save, dirty-state tabs, auto-save on RUN
@@ -55,12 +57,14 @@ Nothing is emulated and nothing is faked: the pixels are the simulator's pixels,
 - Resizable layout: drag the splitters between panels; sizes persist across sessions, double-click to reset
 
 **Running and debugging**
+
 - Live 576×288 glasses display mirror with optional glow and pixel-perfect PNG capture
 - TouchBar input pad: swipe up, swipe down, tap, double tap
 - Embedded phone webview — the plugin's web layer rendered directly beside the glasses
 - Four-panel dock: integrated **terminal**, unified **process log** (Vite, simulator and jobs, color-coded), the **simulator console** with error badges, and a **metrics** panel — session uptime, boot-to-first-render time, lit pixel count, frame delta, mirror throughput, console error rate
 
 **Desktop app**
+
 - Ships as a native macOS application (Electron shell embedding the local server)
 - Recaptures focus when the simulator launch steals it, then hides the simulator window entirely
 - Also runs in plain browser mode (`npm start`) if you prefer
@@ -97,19 +101,39 @@ Small tool, but built like it expects to be poked at:
 
 ## Getting started
 
-Requirements: macOS, Node.js ≥ 18, and ideally the Even Hub tooling installed globally (`npm i -g @evenrealities/evenhub-simulator @evenrealities/evenhub-cli` — otherwise ER Studio resolves them via npx on first run, which is slower).
+**Requirements**
 
-```bash
+- macOS
+- Node.js ≥ 18
+- Ideally the Even Hub tooling installed globally:
+
+  ```
+  npm i -g @evenrealities/evenhub-simulator @evenrealities/evenhub-cli
+  ```
+
+  Otherwise ER Studio resolves them via `npx` on first run, which is slower.
+
+**Install**
+
+The application lives in the `er-studio/` subfolder of the repository, so there are two `cd` steps:
+
+```
 git clone https://github.com/gabrielevierti/er-studio.git
-cd er-studio
+cd er-studio/er-studio
 npm install
+```
 
+**Run**
+
+```
 npm run app     # desktop app
 npm start       # or: browser mode at http://127.0.0.1:4477
 npm run dist    # build the installable .app / .dmg into dist/
 ```
 
-Point ER Studio at your projects folder with `~/.er-studio.json`:
+**Configure**
+
+Point ER Studio at your projects folder by creating `~/.er-studio.json`:
 
 ```json
 {
@@ -120,7 +144,10 @@ Point ER Studio at your projects folder with `~/.er-studio.json`:
 
 Then: **NEW** → pick a template → **RUN** → watch the lens come alive.
 
-On first simulator launch, macOS will ask permission for ER Studio to control System Events — that's the window-hiding mechanism. The build is unsigned, so the packaged app needs right-click → Open the first time.
+**First launch notes**
+
+- macOS will ask permission for ER Studio to control System Events — that's the window-hiding mechanism.
+- The build is unsigned, so the packaged app needs right-click → Open the first time.
 
 ## Honest limits
 
@@ -138,6 +165,12 @@ On first simulator launch, macOS will ask permission for ER Studio to control Sy
 - UI polish — the layout is mature, the details can always get sharper
 - G1 support, if a sensible path through the community tooling emerges
 
+## Contributing
+
+Please feel free to reach out, open issues, make pull requests, try the software out, add support for more platforms or quite literally anything else — it's always nice working with others! :)
+
+If you're reporting a problem, including your macOS version, your Node version and the relevant chunk of the process log makes it much faster to fix.
+
 ## Disclaimer
 
 ER Studio is an independent community project, built out of pure passion — I don't do this for a living.
@@ -148,10 +181,6 @@ All trademarks belong to their respective owners.
 
 For full transparency: at this point in time I do **not** own a pair of Even G2s — everything here was built against the official simulator and public documentation.
 
-## Contributing
-
-Please feel free to reach out, open issues, make pull requests, try the software out, add support for more platforms or quite literally anything else — it's always nice working with others! :)
-
 ## License
 
-[MIT](LICENSE) © 2026 Gabriele Vierti
+[MIT](LICENCE) © 2026 Gabriele Vierti
