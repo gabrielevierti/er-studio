@@ -58,7 +58,7 @@ Nothing is emulated and nothing is faked: the pixels are the simulator's pixels,
 
 **Running and debugging**
 
-- Live 576×288 glasses display mirror with optional glow and pixel-perfect PNG capture
+- Live 576×288 glasses display mirror and pixel-perfect PNG capture
 - TouchBar input pad: swipe up, swipe down, tap, double tap
 - Embedded phone webview — the plugin's web layer rendered directly beside the glasses
 - Four-panel dock: integrated **terminal**, unified **process log** (Vite, simulator and jobs, color-coded), the **simulator console** with error badges, and a **metrics** panel — session uptime, boot-to-first-render time, lit pixel count, frame delta, mirror throughput, console error rate
