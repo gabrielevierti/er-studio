@@ -1,8 +1,10 @@
+# Even Realities Studio
+
 [![Version](https://img.shields.io/github/package-json/v/gabrielevierti/er-studio?filename=er-studio/package.json)](https://github.com/gabrielevierti/er-studio)
 [![Platform](https://img.shields.io/badge/platform-macOS-lightgrey)](https://github.com/gabrielevierti/er-studio)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENCE)
 
-[![Splash](splash.png)]
+![Splash](splash.png)
 
 Editor, file explorer, live glasses display, simulator control, console, terminal, metrics and packaging — all in one window.
 
