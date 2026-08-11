@@ -235,4 +235,11 @@ function createSdkRouter(workspaceRoot) {
 
 function invalidate() { cache = { key: null, at: 0, value: null }; }
 
-module.exports = { createSdkRouter, invalidate, compareVersions, satisfiesRange };
+// globalRoot / readInstalled / inspectProject are shared with doctor.js so the
+// status bar and the diagnostics panel can never disagree about what is
+// installed - one detection path, two presentations.
+module.exports = {
+  createSdkRouter, invalidate, compareVersions, satisfiesRange,
+  globalRoot, readInstalled, inspectProject,
+  GLOBAL_PACKAGES, PROJECT_PACKAGE
+};

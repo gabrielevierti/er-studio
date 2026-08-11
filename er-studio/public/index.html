@@ -118,6 +118,7 @@
     <button class="dock-tab" data-dock="process">CONSOLE<span class="badge" id="badge-process"></span></button>
     <button class="dock-tab" data-dock="glasses-console">SIMULATOR CONSOLE <span class="badge badge-err" id="badge-console"></span></button>
     <button class="dock-tab" data-dock="metrics">METRICS</button>
+    <button class="dock-tab" data-dock="doctor">DOCTOR <span class="badge" id="badge-doctor"></span></button>
     <span class="dock-spacer"></span>
     <button class="icon-btn" id="btn-dock-clear" title="Clear active panel">CLEAR</button>
   </div>
@@ -143,6 +144,17 @@
       <div class="metric"><div class="metric-label">ER STUDIO HOST</div><div class="metric-value mono" id="m-host">—</div><div class="metric-sub">server RSS</div></div>
     </div>
     <div class="metrics-note">Simulator metrics reflect the desktop simulator only. Frame pacing, BLE timing and on-device performance are not reproduced and will be implemented in the future — always validate on real hardware before shipping.</div>
+  </div>
+
+  <div class="dock-panel" id="dock-doctor">
+    <div id="doctor-bar">
+      <button class="btn btn-run" id="btn-doctor-run">RUN CHECKS</button>
+      <button class="btn btn-ghost" id="btn-doctor-copy" title="Plain-text summary for Discord or a bug report" disabled>COPY REPORT</button>
+      <label class="doctor-opt mono"><input type="checkbox" id="doctor-autorun" checked> check at launch</label>
+      <span class="dock-spacer"></span>
+      <span class="doctor-summary mono" id="doctor-summary">not run yet</span>
+    </div>
+    <div id="doctor-list" class="doctor-scroll"></div>
   </div>
 </section>
 

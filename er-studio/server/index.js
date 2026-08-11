@@ -16,7 +16,8 @@ const { createFilesRouter } = require('./files');
 const { createProcessManager, SIM_AUTOMATION_PORT } = require('./proc');
 const { createSimRouter } = require('./sim');
 const { attachTerminal, hasPty } = require('./term');
-const { createSdkRouter } = require('./sdk');   
+const { createSdkRouter } = require('./sdk');
+const { createDoctorRouter } = require('./doctor');
 
 // Optional user config: ~/.er-studio.json  { "workspace": "...", "port": 4477 }
 function readUserConfig() {
@@ -98,8 +99,15 @@ async function startServer(options = {}) {
 
   app.use('/api/fs', createFilesRouter(workspace));
   app.use('/api/sim', createSimRouter(SIM_AUTOMATION_PORT));
-  app.use('/api/sdk', createSdkRouter(workspace)); 
-  
+  app.use('/api/sdk', createSdkRouter(workspace));
+  app.use('/api/doctor', createDoctorRouter({
+    workspace,
+    hasPty,
+    procman,
+    simAutomationPort: SIM_AUTOMATION_PORT,
+    appVersion: require('../package.json').version
+  }));
+
   app.get('/api/state', (req, res) => {
     res.json({ workspace, hasPty, state: procman.publicState() });
   });

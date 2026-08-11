@@ -24,7 +24,8 @@ const state = {
   consoleSinceId: 0,
   errCount: 0,
   warnCount: 0,
-  procLogCount: 0
+  procLogCount: 0,
+  doctorBusy: false
 };
 
 /* ---------------- fetch version from the server ---------------- */
@@ -221,9 +222,13 @@ async function loadProjects() {
   }
 }
 
+const PROJECT_CHECK_IDS = ['project-package', 'project-deps', 'project-sdk', 'project-manifest'];
+
 function onProjectChange() {
   state.project = $('#project-select').value || null;
-  refreshSdk(); 
+  refreshSdk();
+  // Only the project rows can have changed - leave the rest of the report alone.
+  if (doctorReport) runDoctor(PROJECT_CHECK_IDS);
 }
 
 /* ---------------- sdk version ---------------- */
@@ -279,11 +284,8 @@ function paintSdk(el, report) {
   if (!sim.found) {
     el.textContent = 'simulator missing';
     el.dataset.state = 'error';
-    el.onclick = () => {
-      navigator.clipboard.writeText(
-        'npm i -g @evenrealities/evenhub-simulator @evenrealities/evenhub-cli');
-      toast('Install command copied');
-    };
+    el.title = 'Click to open DOCTOR for the full diagnosis\n\n' + el.title;
+    el.onclick = openDoctor;
     return;
   }
 
@@ -292,7 +294,8 @@ function paintSdk(el, report) {
     el.textContent = `simulator ${sim.version} — needs ${SIM_MIN}+`;
     el.dataset.state = 'error';
     el.title = 'The live glasses mirror needs the simulator automation API, '
-             + `added in ${SIM_MIN}.\n\n` + el.title;
+             + `added in ${SIM_MIN}.\n\nClick to open DOCTOR.\n\n` + el.title;
+    el.onclick = openDoctor;
     return;
   }
 
@@ -326,6 +329,287 @@ function compareSemver(a, b) {
   }
   return 0;
 }
+
+/* ---------------- doctor ----------------
+   Diagnostics panel. Every row is one check from /api/doctor; a row can be
+   re-run on its own without touching the rest of the report, and the whole
+   thing flattens to plain text for pasting into Discord or a bug report.   */
+
+const DOCTOR_AUTORUN_KEY = 'er-doctor-autorun';
+let doctorReport = null;
+
+function doctorAutorunEnabled() {
+  return localStorage.getItem(DOCTOR_AUTORUN_KEY) !== '0';
+}
+
+function openDoctor() {
+  const tab = $('.dock-tab[data-dock="doctor"]');
+  if (tab) tab.click();
+}
+
+async function runDoctor(only) {
+  const ids = Array.isArray(only) ? only : (only ? [only] : []);
+  const partial = ids.length > 0;
+
+  if (!partial && state.doctorBusy) return;
+  if (!partial) {
+    state.doctorBusy = true;
+    $('#btn-doctor-run').disabled = true;
+    $('#doctor-summary').textContent = 'running checks…';
+    if (!doctorReport) {
+      $('#doctor-list').innerHTML = '<div class="doctor-empty">Checking your environment…</div>';
+    }
+  } else {
+    for (const id of ids) {
+      const row = $(`.doctor-row[data-id="${id}"]`);
+      if (row) row.classList.add('busy');
+    }
+  }
+
+  const params = new URLSearchParams({ project: state.project || '' });
+  if (partial) params.set('only', ids.join(','));
+
+  try {
+    const report = await api('/api/doctor?' + params.toString());
+    if (partial) patchDoctorChecks(report.checks);
+    else renderDoctor(report);
+    return report;
+  } catch (err) {
+    if (partial) {
+      for (const id of ids) {
+        const row = $(`.doctor-row[data-id="${id}"]`);
+        if (row) row.classList.remove('busy');
+      }
+      toast('Could not re-run that check: ' + err.message, true);
+    } else {
+      $('#doctor-list').innerHTML = '';
+      const box = document.createElement('div');
+      box.className = 'doctor-empty';
+      box.textContent = 'The diagnostics endpoint did not answer (' + err.message +
+        '). The ER Studio server itself may have stopped - check the terminal it was started from.';
+      $('#doctor-list').appendChild(box);
+      $('#doctor-summary').textContent = 'unavailable';
+    }
+  } finally {
+    if (!partial) {
+      state.doctorBusy = false;
+      $('#btn-doctor-run').disabled = false;
+    }
+  }
+}
+
+function renderDoctor(report) {
+  doctorReport = report;
+  const host = $('#doctor-list');
+  host.innerHTML = '';
+
+  let currentGroup = null;
+  for (const check of report.checks) {
+    if (check.group !== currentGroup) {
+      currentGroup = check.group;
+      const head = document.createElement('div');
+      head.className = 'doctor-group';
+      head.textContent = currentGroup.toUpperCase();
+      host.appendChild(head);
+    }
+    host.appendChild(buildDoctorRow(check));
+  }
+
+  $('#btn-doctor-copy').disabled = false;
+  paintDoctorSummary();
+}
+
+// Partial run: swap only the rows we asked for, keep everything else on screen.
+function patchDoctorChecks(checks) {
+  for (const check of checks) {
+    const old = $(`.doctor-row[data-id="${check.id}"]`);
+    if (old) old.replaceWith(buildDoctorRow(check));
+    if (doctorReport) {
+      const i = doctorReport.checks.findIndex(c => c.id === check.id);
+      if (i !== -1) doctorReport.checks[i] = check;
+    }
+  }
+  paintDoctorSummary();
+}
+
+function buildDoctorRow(check) {
+  const row = document.createElement('div');
+  row.className = 'doctor-row';
+  row.dataset.status = check.status;
+  row.dataset.id = check.id;
+
+  const status = document.createElement('div');
+  status.className = 'doctor-status';
+  status.textContent = check.status.toUpperCase();
+
+  const body = document.createElement('div');
+
+  const label = document.createElement('div');
+  label.className = 'doctor-label';
+  label.textContent = check.label;
+
+  const message = document.createElement('div');
+  message.className = 'doctor-message';
+  message.textContent = check.message;
+  body.append(label, message);
+
+  if (check.detail) {
+    const detail = document.createElement('div');
+    detail.className = 'doctor-detail';
+    detail.textContent = check.detail;
+    body.appendChild(detail);
+  }
+
+  if (check.fix) {
+    const fix = document.createElement('div');
+    fix.className = 'doctor-fix';
+
+    if (check.fix.text) {
+      const tag = document.createElement('span');
+      tag.className = 'doctor-fix-tag';
+      // A passing check can still carry a suggestion - don't call that a fix.
+      tag.textContent = (check.status === 'pass' || check.status === 'skip') ? 'TIP' : 'FIX';
+      fix.append(tag, document.createTextNode(check.fix.text));
+    }
+
+    if (check.fix.url) {
+      const link = document.createElement('a');
+      link.className = 'doctor-link';
+      link.href = check.fix.url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = 'DOCS \u2197';
+      fix.append(document.createTextNode(' '), link);
+    }
+
+    if (check.fix.command) {
+      const cmdWrap = document.createElement('div');
+      cmdWrap.className = 'doctor-cmd';
+      const code = document.createElement('code');
+      code.textContent = check.fix.command;
+      const copy = document.createElement('button');
+      copy.className = 'doctor-rerun';
+      copy.textContent = 'COPY';
+      copy.title = 'Copy this command';
+      copy.addEventListener('click', () => {
+        copyText(check.fix.command).then(ok => toast(ok ? 'Command copied' : 'Could not copy', !ok));
+      });
+      cmdWrap.append(code, copy);
+      fix.appendChild(cmdWrap);
+    }
+
+    body.appendChild(fix);
+  }
+
+  const rerun = document.createElement('button');
+  rerun.className = 'doctor-rerun';
+  rerun.textContent = '\u21bb';
+  rerun.title = 'Re-run this check';
+  rerun.addEventListener('click', () => runDoctor(check.id));
+
+  row.append(status, body, rerun);
+  return row;
+}
+
+function paintDoctorSummary() {
+  if (!doctorReport) return;
+
+  const counts = { pass: 0, warn: 0, fail: 0, skip: 0 };
+  for (const c of doctorReport.checks) counts[c.status] = (counts[c.status] || 0) + 1;
+  doctorReport.summary = counts;
+
+  const el = $('#doctor-summary');
+  el.innerHTML = '';
+  const parts = [
+    ['s-fail', counts.fail, 'failed'],
+    ['s-warn', counts.warn, 'warning' + (counts.warn === 1 ? '' : 's')],
+    ['s-pass', counts.pass, 'passed'],
+    ['', counts.skip, 'skipped']
+  ].filter(([, n]) => n > 0);
+
+  parts.forEach(([cls, n, word], i) => {
+    const span = document.createElement('span');
+    if (cls) span.className = cls;
+    span.textContent = `${n} ${word}`;
+    el.appendChild(span);
+    if (i < parts.length - 1) el.appendChild(document.createTextNode(' \u00b7 '));
+  });
+
+  const badge = $('#badge-doctor');
+  badge.className = 'badge' + (counts.fail ? ' badge-err' : counts.warn ? ' badge-warn' : '');
+  badge.textContent = counts.fail ? String(counts.fail) : counts.warn ? String(counts.warn) : '';
+}
+
+// Plain text, home directory redacted - these get pasted in public channels.
+function doctorReportText() {
+  if (!doctorReport) return '';
+  const env = doctorReport.env;
+  const home = env.home;
+  const scrub = text => (home ? String(text).split(home).join('~') : String(text));
+  // Commands stay paste-able after redaction: "~" does not expand inside
+  // double quotes, "$HOME" does.
+  const scrubCmd = text => (home ? String(text).split(home).join('$HOME') : String(text));
+
+  const lines = [];
+  lines.push(`ER Studio ${env.erStudio || '?'} - environment report`);
+  lines.push(`generated  ${doctorReport.generatedAt}`);
+  lines.push(`platform   ${env.platform}`);
+  lines.push(`node       ${env.node}${env.electron ? `  (electron ${env.electron})` : ''}`);
+  lines.push(`workspace  ${scrub(env.workspace)}`);
+  lines.push(`project    ${env.project || '(none selected)'}`);
+  lines.push('');
+
+  const s = doctorReport.summary;
+  lines.push(`${s.fail} failed, ${s.warn} warning${s.warn === 1 ? '' : 's'}, ${s.pass} passed, ${s.skip} skipped`);
+  lines.push('');
+
+  for (const c of doctorReport.checks) {
+    lines.push(`[${c.status.toUpperCase().padEnd(4)}] ${c.label} - ${scrub(c.message)}`);
+    if (c.detail) {
+      for (const line of scrub(c.detail).split('\n')) lines.push('         ' + line.trim());
+    }
+    const hint = (c.status === 'pass' || c.status === 'skip') ? 'tip: ' : 'fix: ';
+    if (c.fix && c.fix.text) lines.push('         ' + hint + scrub(c.fix.text));
+    if (c.fix && c.fix.command) lines.push('         $ ' + scrubCmd(c.fix.command));
+    if (c.fix && c.fix.url) lines.push('         ' + c.fix.url);
+  }
+
+  return lines.join('\n');
+}
+
+// navigator.clipboard needs a secure context; 127.0.0.1 counts, but the
+// browser-mode origin can still refuse, so keep a fallback.
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return ok;
+    } catch { return false; }
+  }
+}
+
+$('#btn-doctor-run').addEventListener('click', () => runDoctor());
+
+$('#btn-doctor-copy').addEventListener('click', async () => {
+  const text = doctorReportText();
+  if (!text) return toast('Run the checks first', true);
+  const ok = await copyText(text);
+  toast(ok ? 'Report copied to clipboard' : 'Could not access the clipboard', !ok);
+});
+
+$('#doctor-autorun').addEventListener('change', ev => {
+  localStorage.setItem(DOCTOR_AUTORUN_KEY, ev.target.checked ? '1' : '0');
+});
 
 /* ---------------- file tree ---------------- */
 
@@ -786,6 +1070,8 @@ $$('.dock-tab').forEach(tab => {
     $('#dock-' + tab.dataset.dock).classList.add('active');
     if (tab.dataset.dock === 'process') { state.procLogCount = 0; $('#badge-process').textContent = ''; }
     if (tab.dataset.dock === 'terminal' && fitAddon) fitAddon.fit();
+    // Opening the panel is itself a request for a report.
+    if (tab.dataset.dock === 'doctor' && !doctorReport && !state.doctorBusy) runDoctor();
   });
 });
 
@@ -968,5 +1254,17 @@ function initSplitters() {
     await loadProjects();
     await loadTree();
   } catch (e) { toast(e.message, true); }
-  refreshSdk();  
+  refreshSdk();
+
+  // First-launch diagnostics: quiet when everything is fine, a badge and one
+  // toast when it is not. Never a modal - it must not get in the way.
+  $('#doctor-autorun').checked = doctorAutorunEnabled();
+  if (doctorAutorunEnabled()) {
+    runDoctor().then(report => {
+      if (report && report.summary.fail > 0) {
+        toast(`${report.summary.fail} environment problem${report.summary.fail === 1 ? '' : 's'} found - see DOCTOR`, true);
+      }
+    }).catch(() => {});
+  }
+  
 })();

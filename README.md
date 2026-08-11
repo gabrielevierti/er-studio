@@ -61,7 +61,15 @@ Nothing is emulated and nothing is faked: the pixels are the simulator's pixels,
 - Live 576×288 glasses display mirror and pixel-perfect PNG capture
 - TouchBar input pad: swipe up, swipe down, tap, double tap
 - Embedded phone webview — the plugin's web layer rendered directly beside the glasses
-- Four-panel dock: integrated **terminal**, unified **process log** (Vite, simulator and jobs, color-coded), the **simulator console** with error badges, and a **metrics** panel — session uptime, boot-to-first-render time, lit pixel count, frame delta, mirror throughput, console error rate
+- Five-panel dock: integrated **terminal**, unified **process log** (Vite, simulator and jobs, color-coded), the **simulator console** with error badges, a **metrics** panel — session uptime, boot-to-first-render time, lit pixel count, frame delta, mirror throughput, console error rate — and the **doctor**
+
+**Environment doctor**
+
+- Checks the whole local setup and says what is wrong in plain language: Node and npm versions, whether the npm global bin directory is actually on the PATH ER Studio inherited, simulator and CLI install and version, whether the simulator binary really launches, whether port 9898 is free or squatted, `~/.er-studio.json` validity, workspace permissions, node-pty, and macOS automation permission
+- Validates the selected project too: `dev` and `build` scripts, installed dependencies, SDK version against the declared range, and `app.json` against the documented `evenhub pack` schema — so manifest mistakes surface before PACK fails on them
+- Every failure comes with the exact command to run or the doc page to read, one click to copy
+- Runs once at launch (toggleable), on demand, or one check at a time — no restart needed
+- **COPY REPORT** produces a plain-text summary with your home directory redacted, ready to paste into Discord or a bug report
 
 **Desktop app**
 
@@ -169,7 +177,7 @@ Then: **NEW** → pick a template → **RUN** → watch the lens come alive.
 
 Please feel free to reach out, open issues, make pull requests, try the software out, add support for more platforms or quite literally anything else — it's always nice working with others! :)
 
-If you're reporting a problem, including your macOS version, your Node version and the relevant chunk of the process log makes it much faster to fix.
+If you're reporting a problem, open the **DOCTOR** panel and press **COPY REPORT** — that one paste carries your OS, Node version, tooling versions and everything that's misconfigured. The relevant chunk of the process log helps too.
 
 ## Disclaimer
 
