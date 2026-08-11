@@ -408,6 +408,11 @@ body.electron #topbar a {
 #status-conn[data-state="on"] { color: var(--accent); }
 #status-conn[data-state="off"] { color: var(--red); }
 
+#status-sdk { cursor: default; }
+#status-sdk[data-state="ok"]    { color: var(--accent); }
+#status-sdk[data-state="warn"]  { color: var(--amber); }
+#status-sdk[data-state="error"] { color: var(--red); cursor: pointer; }
+
 /* ---------- modals / context menu / toasts ---------- */
 
 [hidden] { display: none !important; }

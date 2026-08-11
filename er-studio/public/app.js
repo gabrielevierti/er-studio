@@ -109,6 +109,7 @@ function connectWs() {
         state._treeTimer = setTimeout(() => {
           loadTree().catch(() => {});
           loadProjects().catch(() => {});
+          refreshSdk(); 
         }, 250);
         break;
       case 'job-done':
@@ -153,6 +154,8 @@ function applyStatus(s) {
     state.project = s.project;
     if ($('#project-select').value !== s.project) $('#project-select').value = s.project;
   }
+
+  refreshSdk();  
 
   $('#btn-run').disabled = s.running;
   $('#btn-stop').disabled = !s.running;
@@ -212,11 +215,116 @@ async function loadProjects() {
     sel.appendChild(opt);
   }
   if (prev && data.projects.some(p => p.name === prev)) sel.value = prev;
-  state.project = sel.value || null;
+  {
+    refreshSdk();
+    state.project = sel.value || null;
+  }
 }
 
 function onProjectChange() {
   state.project = $('#project-select').value || null;
+  refreshSdk(); 
+}
+
+/* ---------------- sdk version ---------------- */
+
+async function refreshSdk() {
+  const el = $('#status-sdk');
+  const q = encodeURIComponent(state.project || '');
+
+  let report;
+  try {
+    report = await api(`/api/sdk?project=${q}`);
+  } catch {
+    el.textContent = 'sdk: ?';
+    el.dataset.state = 'off';
+    return;
+  }
+
+  paintSdk(el, report);
+
+  // Update check is a second request so the bar paints from disk immediately
+  // and the hint appears a moment later only if there is one.
+  api(`/api/sdk?project=${q}&updates=1`)
+    .then(full => paintSdk(el, full))
+    .catch(() => {});
+}
+
+const SIM_MIN = '0.7.0';   // --automation-port, i.e. the live mirror
+
+function paintSdk(el, report) {
+  const sim  = report.global.simulator;
+  const cli  = report.global.cli;
+  const proj = report.project;
+
+  // Tooltip carries everything; the label carries one thing.
+  const lines = [];
+  if (proj) {
+    lines.push(proj.found
+      ? `SDK ${proj.version}${proj.declared ? `   (declares ${proj.declared})` : ''}`
+      : `SDK: ${proj.reason}`);
+  } else {
+    lines.push('SDK: no project selected');
+  }
+  for (const [name, e] of [['simulator', sim], ['cli', cli]]) {
+    lines.push(e.found
+      ? `${name} ${e.version} · ${e.source}${e.updateAvailable ? `  →  ${e.latest} available` : ''}`
+      : `${name}: ${e.reason}`);
+  }
+  el.title = lines.join('\n');
+  el.onclick = null;
+
+  // --- tooling problems outrank the version, because they break RUN ---
+
+  if (!sim.found) {
+    el.textContent = 'simulator missing';
+    el.dataset.state = 'error';
+    el.onclick = () => {
+      navigator.clipboard.writeText(
+        'npm i -g @evenrealities/evenhub-simulator @evenrealities/evenhub-cli');
+      toast('Install command copied');
+    };
+    return;
+  }
+
+  // Older simulators have no automation API: RUN starts, mirror stays blank.
+  if (compareSemver(sim.version, SIM_MIN) < 0) {
+    el.textContent = `simulator ${sim.version} — needs ${SIM_MIN}+`;
+    el.dataset.state = 'error';
+    el.title = 'The live glasses mirror needs the simulator automation API, '
+             + `added in ${SIM_MIN}.\n\n` + el.title;
+    return;
+  }
+
+  // --- otherwise: the SDK version, which is the question being asked ---
+
+  if (!proj) {
+    el.textContent = 'sdk —';
+    el.dataset.state = 'off';
+  } else if (proj.declared && !proj.found) {
+    el.textContent = 'sdk not installed';
+    el.dataset.state = 'warn';
+  } else if (proj.satisfies === false) {
+    el.textContent = `sdk ${proj.version} ≠ ${proj.declared}`;
+    el.dataset.state = 'warn';
+  } else if (proj.found) {
+    el.textContent = `sdk ${proj.version}`;
+    el.dataset.state = 'ok';
+  } else {
+    el.textContent = 'sdk —';
+    el.dataset.state = 'off';
+  }
+}
+
+// Same rules as the server's comparator, small enough not to be worth an endpoint.
+function compareSemver(a, b) {
+  const ap = String(a).split('-')[0].split('.').map(Number);
+  const bp = String(b).split('-')[0].split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    const l = ap[i] || 0, r = bp[i] || 0;
+    if (l !== r) return l > r ? 1 : -1;
+  }
+  return 0;
 }
 
 /* ---------------- file tree ---------------- */
@@ -860,4 +968,5 @@ function initSplitters() {
     await loadProjects();
     await loadTree();
   } catch (e) { toast(e.message, true); }
+  refreshSdk();  
 })();

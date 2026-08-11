@@ -1,12 +1,13 @@
 {
   "name": "er-studio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Even Realities Studio - integrated development environment for Even G2 (Even Hub) apps",
   "main": "electron/main.js",
   "scripts": {
-    "start": "node server/index.js",
-    "app": "electron .",
-    "dist": "electron-builder --mac"
+  "start": "node server/index.js",
+  "app": "electron .",
+  "dist": "electron-builder --mac",
+  "postinstall": "electron-rebuild -f -w node-pty"
   },
   "engines": {
     "node": ">=18"
@@ -19,8 +20,9 @@
     "node-pty": "^1.0.0"
   },
   "devDependencies": {
-    "electron": "^33.2.0",
-    "electron-builder": "^25.1.8"
+  "@electron/rebuild": "^3.7.0",
+  "electron": "^33.2.0",
+  "electron-builder": "^25.1.8"
   },
   "build": {
     "appId": "dev.gabrielevierti.erstudio",
