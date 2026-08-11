@@ -1,10 +1,8 @@
-# Even Realities Studio
+![Banner](banner.png)
 
 [![Version](https://img.shields.io/github/package-json/v/gabrielevierti/er-studio?filename=er-studio/package.json)](https://github.com/gabrielevierti/er-studio)
 [![Platform](https://img.shields.io/badge/platform-macOS-lightgrey)](https://github.com/gabrielevierti/er-studio)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENCE)
-
-**An integrated development environment for Even Realities G2 smart glasses.**
 
 Editor, file explorer, live glasses display, simulator control, console, terminal, metrics and packaging — all in one window.
 
@@ -12,70 +10,25 @@ Editor, file explorer, live glasses display, simulator control, console, termina
 
 ## Why this exists
 
-The official Even Hub toolchain is solid: a web-based SDK, a desktop simulator, a CLI for packaging. But the workflow it produces is fragmented.
-You write code in your editor, run Vite in a terminal, launch the simulator in its own window, read app logs somewhere else, and keep a browser tab open on the side.
-Four surfaces for one task, constant window juggling, and every run cycle means re-orchestrating all of them by hand — which I found a bit finicky, to be honest.
+The official Even Hub toolchain is solid — web SDK, desktop simulator, packaging CLI — but the workflow it produces is fragmented. You write code in your editor, run Vite in a terminal, launch the simulator in its own window, and read logs somewhere else. Four surfaces for one task, re-orchestrated by hand on every run cycle.
 
-I wanted what Android developers have had for a decade: open one application, write code, press RUN, and see the device screen right next to the editor.
+I wanted what Android developers have had for a decade: open one application, write code, press RUN, see the device screen next to the editor. Nothing like that existed for the G2, so I built it.
 
-Nothing like that existed for the G2 — so I decided to build it.
+ER Studio doesn't replace the official tooling; it orchestrates it. Under the hood it drives the real `evenhub-simulator`, the real Vite dev server and the real `evenhub-cli` — you just never touch them directly.
 
-ER Studio (formally Even Realities Studio) is that missing piece.
-It doesn't replace the official tooling; it orchestrates it.
-Under the hood it drives the real `evenhub-simulator`, the real Vite dev server, and the real `evenhub-cli` — you just never have to touch them directly.
-
-## The theory behind it
-
-The simulator itself can't be embedded — it's a native LVGL window. But since v0.7.0 it ships an **HTTP automation control plane**: launched with `--automation-port`, it exposes the glasses framebuffer as a PNG, the app's console buffer, and TouchBar input injection over plain HTTP.
-
-ER Studio runs the simulator as a hidden, managed child process and rebuilds the entire experience on top of that API:
-
-- the **glasses display** in the app is a live mirror of the real framebuffer, polled continuously
-- the **TouchBar pad** injects real `up / down / click / double_click` events
-- the **glasses console** streams the app's `console.*` output, uncaught exceptions and failed fetches — real debugging, not a reimplementation
-- **metrics** are computed from the same data — lit pixels, frame deltas, boot-to-first-render
-
-The simulator window itself gets hidden the moment it appears.
-You develop against its mirror, inside ER Studio, and never look at it again — pretend it doesn't exist. :P
-
-Nothing is emulated and nothing is faked: the pixels are the simulator's pixels, the input is real input, the logs are your app's real logs.
+**How the mirror works.** The simulator is a native LVGL window and can't be embedded. But since v0.7.0 it ships an HTTP automation control plane: launched with `--automation-port`, it exposes the framebuffer as a PNG, the app's console buffer, and TouchBar input injection over plain HTTP. ER Studio runs it as a hidden child process and rebuilds the experience on top of that API — so the pixels are the simulator's pixels, the input is real input, and the logs are your app's real logs. Nothing is emulated or faked.
 
 ## What it does
 
-**Project lifecycle**
+**Project lifecycle** — scaffold from the official `evenhub-templates` (degit clone and `npm install` handled for you); one-click **RUN** starts Vite, detects its port from stdout and launches the simulator against it; **PACK** builds and produces the `.ehpk` ready for the developer portal.
 
-- Scaffold new projects from the official `evenhub-templates` (minimal, asr, image, text-heavy) — degit clone and `npm install` handled for you
-- One-click **RUN**: starts the Vite dev server, detects its port from stdout, launches the simulator against it. **STOP** kills both process groups cleanly, **RESTART** recycles the session
-- One-click **PACK**: runs the production build and `evenhub-cli pack app.json dist`, producing the `.ehpk` ready for the developer portal
+**Writing code** — Monaco (the engine inside VS Code), fully vendored so it works offline. TS/JS IntelliSense plus highlighting for HTML, CSS/SCSS, JSON, Markdown, YAML, XML and shell. File explorer backed by a filesystem watcher, so the tree updates itself when scaffolds finish or anything changes externally. Draggable splitters; sizes persist across sessions.
 
-**Writing code**
+**Running and debugging** — live 576×288 glasses mirror with pixel-perfect PNG capture, TouchBar input pad, embedded phone webview, and a five-panel dock: terminal, unified process log, simulator console with error badges, metrics, and the doctor.
 
-- Monaco editor (the engine inside VS Code), fully vendored — no CDN, works offline
-- TypeScript and JavaScript IntelliSense, plus highlighting and completion for HTML, CSS/SCSS, JSON, Markdown, YAML, XML and shell
-- Auto-indentation, bracket pairing and colorization, format on paste, Cmd+S to save, dirty-state tabs, auto-save on RUN
-- File explorer with create, rename, delete and move via context menu — backed by a filesystem watcher, so the tree updates itself when scaffolds finish, terminal commands touch files, or anything changes externally
-- Resizable layout: drag the splitters between panels; sizes persist across sessions, double-click to reset
+**Environment doctor** — checks the whole local setup and says what's wrong in plain language: Node and npm versions, whether the npm global bin is actually on the PATH ER Studio inherited, simulator and CLI versions, port 9898, config validity, and the selected project down to `app.json` against the documented `evenhub pack` schema. Every failure comes with the exact command or doc link that fixes it, and **COPY REPORT** gives you a paste-ready summary for Discord or a bug report.
 
-**Running and debugging**
-
-- Live 576×288 glasses display mirror and pixel-perfect PNG capture
-- TouchBar input pad: swipe up, swipe down, tap, double tap
-- Embedded phone webview — the plugin's web layer rendered directly beside the glasses
-- Five-panel dock: integrated **terminal**, unified **process log** (Vite, simulator and jobs, color-coded), the **simulator console** with error badges, a **metrics** panel — session uptime, boot-to-first-render time, lit pixel count, frame delta, mirror throughput, console error rate — and the **doctor**
-
-**Environment doctor**
-
-- Checks the whole local setup and says what is wrong in plain language: Node and npm versions, whether the npm global bin directory is actually on the PATH ER Studio inherited, simulator and CLI install and version, whether the simulator binary really launches, whether port 9898 is free or squatted, `~/.er-studio.json` validity, workspace permissions, node-pty, and macOS automation permission
-- Validates the selected project too: `dev` and `build` scripts, installed dependencies, SDK version against the declared range, and `app.json` against the documented `evenhub pack` schema — so manifest mistakes surface before PACK fails on them
-- Every failure comes with the exact command to run or the doc page to read, one click to copy
-- Runs once at launch (toggleable), on demand, or one check at a time — no restart needed
-- **COPY REPORT** produces a plain-text summary with your home directory redacted, ready to paste into Discord or a bug report
-
-**Desktop app**
-
-- Ships as a native macOS application (Electron shell embedding the local server)
-- Recaptures focus when the simulator launch steals it, then hides the simulator window entirely
-- Also runs in plain browser mode (`npm start`) if you prefer
+**Desktop app** — a native macOS application (Electron shell embedding the local server) that recaptures focus when the simulator steals it, then hides the simulator window entirely. Also runs in plain browser mode.
 
 ## Architecture
 
@@ -83,45 +36,31 @@ Nothing is emulated and nothing is faked: the pixels are the simulator's pixels,
 ER Studio window (Electron / browser)
         │  REST + WebSocket
 ER Studio server (Node, 127.0.0.1 only)
-        ├── /api/fs     workspace file system (path-traversal hardened)
-        ├── /api/run    session control
-        │                 ├─ spawns: npm run dev            (project's Vite)
-        │                 └─ spawns: evenhub-simulator <url> --automation-port 9898
-        ├── /api/sim    proxy → simulator control plane
-        │                 ├─ GET  /screenshot   framebuffer PNG → live mirror
-        │                 ├─ GET  /console      app logs (incremental since_id)
-        │                 └─ POST /input        TouchBar gestures
-        └── /ws         status events, process logs, terminal
+        ├── /api/fs      workspace file system (path-traversal hardened)
+        ├── /api/run     session control
+        │                  ├─ spawns: npm run dev  (project's Vite)
+        │                  └─ spawns: evenhub-simulator <url> --automation-port 9898
+        ├── /api/sim     proxy → simulator control plane
+        │                  ├─ GET  /screenshot   framebuffer PNG → live mirror
+        │                  ├─ GET  /console      app logs (incremental since_id)
+        │                  └─ POST /input        TouchBar gestures
+        ├── /api/doctor  environment diagnostics
+        └── /ws          status events, process logs, terminal
 ```
 
-Everything speaks to official packages: `@evenrealities/evenhub-simulator`, `@evenrealities/evenhub-cli`, `evenhub-templates`. ER Studio adds no custom protocol layer between your app and the platform — what runs in here is exactly what will run when you sideload or submit.
+Everything speaks to official packages. ER Studio adds no custom protocol layer between your app and the platform — what runs in here is exactly what will run when you sideload or submit.
 
-The stack is deliberately lean: a plain Node.js server (Express + ws), a vanilla JS frontend with no framework and no build step, and an Electron shell. Monaco and xterm.js are the only heavyweight dependencies, both vendored into the app.
+The stack is deliberately lean: a plain Node server (Express + ws), a vanilla JS frontend with no framework and no build step, and an Electron shell. Monaco and xterm.js are the only heavyweight dependencies, both vendored.
 
-## Security
-
-Small tool, but built like it expects to be poked at:
-
-- The server binds to **127.0.0.1 only** — nothing is ever exposed on the network
-- Every client-supplied path is resolved and verified to stay **inside the workspace root** before touching the disk: no traversal, no null bytes, no absolute-path escapes
-- Simulator input actions and scaffold parameters are **validated against strict allowlists** before any command is composed
-- Process-level exception guards: a crash in any single handler is caught and logged, so one bug can't take the whole studio down
+Small tool, but built like it expects to be poked at: the server binds to 127.0.0.1 only, every client-supplied path is verified to stay inside the workspace root, simulator input and scaffold parameters are validated against strict allowlists, and a crash in any single handler is caught rather than taking the studio down.
 
 ## Getting started
 
-**Requirements**
+Requires macOS and Node 18+ (Even's docs ask for 20 LTS or 22+). Ideally install the Even Hub tooling globally — otherwise ER Studio falls back to `npx`, which is slower:
 
-- macOS
-- Node.js ≥ 18
-- Ideally the Even Hub tooling installed globally:
-
-  ```
-  npm i -g @evenrealities/evenhub-simulator @evenrealities/evenhub-cli
-  ```
-
-  Otherwise ER Studio resolves them via `npx` on first run, which is slower.
-
-**Install**
+```
+npm i -g @evenrealities/evenhub-simulator @evenrealities/evenhub-cli
+```
 
 The application lives in the `er-studio/` subfolder of the repository, so there are two `cd` steps:
 
@@ -129,19 +68,13 @@ The application lives in the `er-studio/` subfolder of the repository, so there 
 git clone https://github.com/gabrielevierti/er-studio.git
 cd er-studio/er-studio
 npm install
-```
 
-**Run**
-
-```
 npm run app     # desktop app
 npm start       # or: browser mode at http://127.0.0.1:4477
 npm run dist    # build the installable .app / .dmg into dist/
 ```
 
-**Configure**
-
-Point ER Studio at your projects folder by creating `~/.er-studio.json`:
+Point ER Studio at your projects folder with `~/.er-studio.json`:
 
 ```json
 {
@@ -152,42 +85,34 @@ Point ER Studio at your projects folder by creating `~/.er-studio.json`:
 
 Then: **NEW** → pick a template → **RUN** → watch the lens come alive.
 
-**First launch notes**
-
-- macOS will ask permission for ER Studio to control System Events — that's the window-hiding mechanism.
-- The build is unsigned, so the packaged app needs right-click → Open the first time.
+On first launch macOS asks permission to control System Events (that's the window-hiding mechanism), and since the build is unsigned the packaged app needs right-click → Open the first time. If anything doesn't work, the **DOCTOR** panel will tell you why.
 
 ## Honest limits
 
-- The simulator is **not a hardware emulator** — frame pacing, BLE timing and on-device performance are not reproduced, and the metrics panel describes the simulator session, not the glasses themselves. I can't close that gap yet, since I don't own a pair of real glasses at the moment.
-- The mirror's frame rate is bounded by how fast the simulator serves screenshots — capping it to the real refresh behavior of the glasses is on the list.
+- The simulator is **not a hardware emulator** — frame pacing, BLE timing and on-device performance aren't reproduced, and the metrics panel describes the simulator session, not the glasses. I can't close that gap yet, since I don't own a pair.
+- The mirror's frame rate is bounded by how fast the simulator serves screenshots.
 - The interactive pty terminal depends on `node-pty` building on your machine; when it can't, ER Studio degrades to a line-based command runner automatically.
-- macOS only for now. The server core is platform-neutral; window hiding and focus recapture are the macOS-specific parts — help with Windows and Linux support is very welcome.
+- macOS only for now. The server core is platform-neutral — window hiding and focus recapture are the macOS-specific parts, and help with Windows and Linux is very welcome.
 
 ## Roadmap
 
-- Automated pre-submission QA panel: headless checks against the App Submission guidelines (framebuffer renders at boot, exit dialog on double-tap, clean console), built on the same automation API
+- Automated pre-submission QA panel: headless checks against the App Submission guidelines, built on the same automation API
 - QR sideload helper for on-device testing
 - Frame-diff visualization on the mirror
-- BLE-level metrics and, eventually, direct PC-to-glasses development — removing the phone from the loop during development entirely
-- UI polish — the layout is mature, the details can always get sharper
+- BLE-level metrics and, eventually, direct PC-to-glasses development
 - G1 support, if a sensible path through the community tooling emerges
 
 ## Contributing
 
 Please feel free to reach out, open issues, make pull requests, try the software out, add support for more platforms or quite literally anything else — it's always nice working with others! :)
 
-If you're reporting a problem, open the **DOCTOR** panel and press **COPY REPORT** — that one paste carries your OS, Node version, tooling versions and everything that's misconfigured. The relevant chunk of the process log helps too.
+If you're reporting a problem, open **DOCTOR** and press **COPY REPORT** — that one paste carries your OS, Node version, tooling versions and everything that's misconfigured.
 
 ## Disclaimer
 
-ER Studio is an independent community project, built out of pure passion — I don't do this for a living.
-It is not affiliated with, endorsed by, or supported by Even Realities.
-It orchestrates their publicly published npm packages and documented APIs.
+ER Studio is an independent community project, built out of pure passion — I don't do this for a living. It is not affiliated with, endorsed by, or supported by Even Realities; it orchestrates their publicly published npm packages and documented APIs. All trademarks belong to their respective owners.
 
-All trademarks belong to their respective owners.
-
-For full transparency: at this point in time I do **not** own a pair of Even G2s — everything here was built against the official simulator and public documentation.
+For full transparency: I do **not** currently own a pair of Even G2s — everything here was built against the official simulator and public documentation.
 
 ## License
 
