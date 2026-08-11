@@ -23,7 +23,11 @@ const net = require('net');
 const { execFile, spawn } = require('child_process');
 const express = require('express');
 
-const { globalRoot, readInstalled, inspectProject, GLOBAL_PACKAGES } = require('./sdk');
+const {
+  globalRoot, readInstalled, inspectProject, latestVersion,
+  compareVersions, GLOBAL_PACKAGES, PROJECT_PACKAGE
+} = require('./sdk');
+const { referenceHealth } = require('./sdkref');
 
 /* ---------------- constants ---------------- */
 
@@ -40,7 +44,8 @@ const DOCS = {
   cli: 'https://hub.evenrealities.com/docs/reference/cli',
   packaging: 'https://hub.evenrealities.com/docs/ship/packaging',
   templates: 'https://hub.evenrealities.com/docs/get-started/quickstart/templates',
-  erStudio: 'https://github.com/gabrielevierti/er-studio#getting-started'
+  erStudio: 'https://github.com/gabrielevierti/er-studio#getting-started',
+  sdkChangelog: 'https://www.npmjs.com/package/@evenrealities/even_hub_sdk?activeTab=versions'
 };
 
 /* ---------------- small helpers ---------------- */
@@ -817,6 +822,56 @@ const CHECKS = [
   },
 
   {
+    id: 'project-reference',
+    group: 'Project',
+    label: 'SDK API reference',
+    run(ctx) {
+      const h = referenceHealth(ctx.projectDir);
+
+      if (!h.version) {
+        return {
+          status: 'warn',
+          message: 'No API reference available',
+          detail: `${h.reason || 'unknown'}. The REFERENCE panel will be empty.`,
+          fix: { text: 'Select a project with the SDK installed, or rebuild the offline snapshot.', command: 'node tools/build-sdk-reference.js' }
+        };
+      }
+
+      const missing = (h.symbolsWithoutEnglish || []).length;
+
+      if (h.unparsedExports && h.unparsedExports.length) {
+        return {
+          status: 'warn',
+          message: `${h.unparsedExports.length} exported symbol(s) not parsed`,
+          detail: `The .d.ts shape changed in SDK ${h.version} and server/dts-parse.js did not recognise: ${h.unparsedExports.join(', ')}. Those symbols are missing from the REFERENCE panel.`,
+          fix: { text: 'Extend the parser, or switch it to the TypeScript compiler API.' }
+        };
+      }
+
+      if (h.overlayStale) {
+        const orphans = (h.orphanedOverlayEntries || []).length;
+        return {
+          status: 'warn',
+          message: 'Reference overlay was written for a different SDK version',
+          detail: `Installed SDK is ${h.version}. ${orphans ? `${orphans} overlay entr${orphans === 1 ? 'y refers' : 'ies refer'} to symbols that no longer exist. ` : ''}Signatures are still correct - only the English notes may be out of date.`,
+          fix: {
+            text: 'Regenerate, review the drift report, then bump sdkVersionAuthoredAgainst in data/sdk-overlay.json.',
+            command: 'node tools/build-sdk-reference.js'
+          }
+        };
+      }
+
+      return {
+        status: 'pass',
+        message: `${h.symbolCount} symbols from SDK ${h.version}${h.source === 'bundled' ? ' (bundled snapshot)' : ''}`,
+        detail: missing
+          ? `${missing} symbols have no English overlay entry yet and fall back to the SDK's original Chinese doc comments.`
+          : null
+      };
+    }
+  },
+
+  {
     id: 'project-deps',
     group: 'Project',
     label: 'Dependencies installed',
@@ -844,16 +899,18 @@ const CHECKS = [
     id: 'project-sdk',
     group: 'Project',
     label: 'Even Hub SDK',
-    run(ctx) {
+    async run(ctx) {
       if (!ctx.projectDir) return { status: 'skip', message: 'Skipped - no project selected' };
       const sdk = inspectProject(ctx.projectDir);
+
+      const installLatest = `cd "${ctx.projectDir}" && npm i ${PROJECT_PACKAGE}@latest`;
 
       if (!sdk.declared && !sdk.found) {
         return {
           status: 'warn',
           message: 'This project does not depend on the Even Hub SDK',
           detail: 'Fine for a plain web page, but nothing will render on the glasses without it.',
-          fix: { text: 'Add the SDK.', command: `cd "${ctx.projectDir}" && npm i @evenrealities/even_hub_sdk`, url: DOCS.tools }
+          fix: { text: 'Add the SDK.', command: `cd "${ctx.projectDir}" && npm i ${PROJECT_PACKAGE}`, url: DOCS.tools }
         };
       }
       if (sdk.declared && !sdk.found) {
@@ -868,13 +925,63 @@ const CHECKS = [
         return {
           status: 'warn',
           message: `SDK ${sdk.version} does not satisfy ${sdk.declared}`,
-          detail: 'Every Even package is still on 0.x, where the minor version is the breaking-change axis - so 0.0.11 against a ^0.0.12 range really can behave differently.',
+          detail: 'npm would not have chosen this version for that range, so it was almost certainly installed by hand or left behind by an edit to package.json.',
           fix: { text: 'Reinstall to bring it in line.', command: `cd "${ctx.projectDir}" && npm install` }
         };
       }
+
+      // Registry lookup. latestVersion caches for 6 hours and returns null on
+      // failure, so an offline laptop degrades to the old behaviour rather
+      // than turning into a warning about nothing.
+      const latest = await latestVersion(PROJECT_PACKAGE);
+
+      if (!latest) {
+        return {
+          status: 'pass',
+          message: `even_hub_sdk ${sdk.version}`,
+          detail: [
+            sdk.declared ? `package.json declares ${sdk.declared}.` : null,
+            'Could not reach the npm registry, so this may not be the newest release.'
+          ].filter(Boolean).join(' ')
+        };
+      }
+
+      const delta = compareVersions(latest, sdk.version);
+
+      if (delta > 0) {
+        // ^0.0.x pins the patch in npm's resolver, so `npm update` is a no-op
+        // here. Saying so is the difference between a useful warning and one
+        // that sends people round in circles.
+        const caretPinned = /^\^0\.0\./.test(String(sdk.declared || ''));
+        return {
+          status: 'warn',
+          message: `even_hub_sdk ${sdk.version} - ${latest} is available`,
+          detail: [
+            sdk.declared ? `package.json declares ${sdk.declared}.` : null,
+            caretPinned
+              ? '"npm update" will not move this: npm resolves ^0.0.x to exactly 0.0.x, so the range is pinned until you install the new version explicitly.'
+              : null,
+            'Even has been releasing roughly monthly; check the version list before upgrading a project mid-flight.'
+          ].filter(Boolean).join(' '),
+          fix: {
+            text: 'Install the latest release, which also rewrites the range in package.json.',
+            command: installLatest,
+            url: DOCS.sdkChangelog
+          }
+        };
+      }
+
+      if (delta < 0) {
+        return {
+          status: 'pass',
+          message: `even_hub_sdk ${sdk.version} - ahead of the published ${latest}`,
+          detail: 'A prerelease, a link, or a local build. Nothing to do unless that is a surprise.'
+        };
+      }
+
       return {
         status: 'pass',
-        message: `even_hub_sdk ${sdk.version}`,
+        message: `even_hub_sdk ${sdk.version} - latest`,
         detail: sdk.declared ? `package.json declares ${sdk.declared}.` : undefined
       };
     }

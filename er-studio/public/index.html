@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="vendor/xterm/xterm.css">
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="sdkref.css">
 </head>
 <body>
 
@@ -119,6 +120,7 @@
     <button class="dock-tab" data-dock="glasses-console">SIMULATOR CONSOLE <span class="badge badge-err" id="badge-console"></span></button>
     <button class="dock-tab" data-dock="metrics">METRICS</button>
     <button class="dock-tab" data-dock="doctor">DOCTOR <span class="badge" id="badge-doctor"></span></button>
+    <button class="dock-tab" data-dock="sdkref">REFERENCE</button>
     <span class="dock-spacer"></span>
     <button class="icon-btn" id="btn-dock-clear" title="Clear active panel">CLEAR</button>
   </div>
@@ -156,7 +158,22 @@
     </div>
     <div id="doctor-list" class="doctor-scroll"></div>
   </div>
-</section>
+
+  <div class="dock-panel" id="dock-sdkref">
+    <div id="ref-bar">
+      <input type="text" id="ref-search" class="mono" placeholder="search SDK symbols…" spellcheck="false">
+      <label class="ref-opt mono"><input type="checkbox" id="ref-follow" checked> follow cursor</label>
+      <button class="icon-btn" id="ref-reload" title="Re-read the overlay and the installed SDK">RELOAD</button>
+      <span class="dock-spacer"></span>
+      <span id="ref-drift" class="mono" hidden></span>
+      <span id="ref-status" class="mono">not loaded</span>
+    </div>
+    <div id="ref-body">
+      <div id="ref-list" class="mono"></div>
+      <div id="ref-detail"><div class="ref-empty">Select a symbol, or put the cursor on one in the editor.</div></div>
+    </div>
+  </div>
+  </section>
 
 <footer id="statusbar" class="mono">
   <span id="status-workspace">workspace: —</span>
@@ -205,5 +222,6 @@
 <script src="vendor/xterm/xterm-addon-fit.js"></script>
 <script src="vendor/monaco/vs/loader.js"></script>
 <script src="app.js"></script>
+<script src="sdkref.js"></script>
 </body>
 </html>

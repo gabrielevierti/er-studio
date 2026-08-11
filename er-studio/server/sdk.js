@@ -181,6 +181,10 @@ function satisfiesRange(version, range) {
   // breaking-change axis, so ^0.7.0 does not accept 0.8.0. Every Even package
   // is still on 0.x, so this is the normal path, not an edge case.
   if (op === '^') {
+    // npm resolves ^0.0.x to =0.0.x exactly: with major and minor both zero
+    // there is no non-breaking axis left, so the patch is pinned. Every Even
+    // package is 0.0.x today, so this is the branch that actually runs.
+    if (Number(major) === 0 && Number(minor) === 0) return order === 0;
     return Number(major) === 0
       ? inst[0] === 0 && inst[1] === Number(minor) && order >= 0
       : inst[0] === Number(major) && order >= 0;
@@ -240,6 +244,6 @@ function invalidate() { cache = { key: null, at: 0, value: null }; }
 // installed - one detection path, two presentations.
 module.exports = {
   createSdkRouter, invalidate, compareVersions, satisfiesRange,
-  globalRoot, readInstalled, inspectProject,
+  globalRoot, readInstalled, inspectProject, latestVersion,
   GLOBAL_PACKAGES, PROJECT_PACKAGE
 };

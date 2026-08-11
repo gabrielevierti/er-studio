@@ -201,12 +201,59 @@ function createProcessManager(workspaceRoot, broadcast) {
     return { ok: true };
   }
 
+
+  // One-shot job: run a batch of doctor fix commands, in order.
+  //
+  // Only commands a check explicitly marked `auto: true` ever get here - the
+  // route filters against the live doctor report, so the UI cannot post
+  // arbitrary shell. Sequential rather than parallel because npm will happily
+  // corrupt a tree if two installs touch it at once.
+  //
+  // A failing command does not abort the batch: a global install failing has
+  // no bearing on a project install, and the doctor re-run afterwards reports
+  // the real state anyway.
+  function runFixes(commands) {
+    if (state.job) return { error: 'Another job is already running' };
+    if (!Array.isArray(commands) || commands.length === 0) return { error: 'No fixes to run' };
+
+    state.job = { kind: 'fixes', project: state.project, startedAt: Date.now(), total: commands.length };
+    emitStatus();
+
+    let index = 0;
+    const results = [];
+
+    const runNext = () => {
+      if (index >= commands.length) {
+        const failed = results.filter(r => r.code !== 0).length;
+        log('job', Buffer.from(`[er-studio] fixes complete - ${results.length - failed}/${results.length} succeeded`));
+        broadcast({ type: 'job-done', kind: 'fixes', code: failed === 0 ? 0 : 1, results });
+        state.job = null;
+        jobProc = null;
+        emitStatus();
+        return;
+      }
+
+      const cmd = commands[index++];
+      log('job', Buffer.from(`[er-studio] fix ${index}/${commands.length}: ${cmd}`));
+      jobProc = spawnGroup('/bin/sh', ['-c', cmd], workspaceRoot, 'job');
+      jobProc.on('exit', code => {
+        results.push({ command: cmd, code });
+        log('job', Buffer.from(`[er-studio] ${code === 0 ? 'ok' : `failed (code ${code})`}`));
+        broadcast({ type: 'fix-progress', done: index, total: commands.length, command: cmd, code });
+        runNext();
+      });
+    };
+
+    runNext();
+    return { ok: true, total: commands.length };
+  }
+
   function shutdown() {
     killGroup(jobProc);
     stop();
   }
 
-  return { start, stop, restart, pack, scaffold, publicState, shutdown };
+  return { start, stop, restart, pack, scaffold, runFixes, publicState, shutdown };
 }
 
 module.exports = { createProcessManager, SIM_AUTOMATION_PORT };

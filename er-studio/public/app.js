@@ -25,7 +25,8 @@ const state = {
   errCount: 0,
   warnCount: 0,
   procLogCount: 0,
-  doctorBusy: false
+  doctorBusy: false,
+  fixBusy: false
 };
 
 /* ---------------- fetch version from the server ---------------- */
@@ -113,7 +114,25 @@ function connectWs() {
           refreshSdk(); 
         }, 250);
         break;
+      case 'fix-progress':
+        setFixProgress(`${msg.done}/${msg.total}${msg.code === 0 ? '' : ' \u00b7 last failed'}`);
+        break;
       case 'job-done':
+        if (msg.kind === 'fixes') {
+          state.fixBusy = false;
+          setFixProgress('');
+          const results = msg.results || [];
+          const failed = results.filter(r => r.code !== 0);
+          toast(
+            failed.length
+              ? `${failed.length} of ${results.length} fixes failed - see CONSOLE`
+              : `${results.length} fix${results.length === 1 ? '' : 'es'} applied`,
+            failed.length > 0
+          );
+          // Re-run so the panel shows reality, not the report that triggered this.
+          runDoctor().catch(() => {});
+          break;
+        }
         if (msg.kind === 'scaffold' && msg.code === 0) {
           toast(`Project "${msg.project}" created`);
           expandedDirs.add(msg.project);
@@ -398,6 +417,84 @@ async function runDoctor(only) {
   }
 }
 
+
+/* ---------------- doctor: applying fixes ---------------- */
+
+// Only checks whose fix the server marked `auto: true` are offered. A passing
+// check can carry a TIP, which is not something to run.
+function isAutoFix(check) {
+  return !!(check.fix && check.fix.auto === true && check.fix.command &&
+            check.status !== 'pass' && check.status !== 'skip');
+}
+
+function pendingFixes() {
+  return doctorReport ? doctorReport.checks.filter(isAutoFix) : [];
+}
+
+function setFixProgress(text) {
+  const el = $('#doctor-fix-progress');
+  if (el) el.textContent = text;
+}
+
+function paintFixButton() {
+  const btn = $('#btn-doctor-fix');
+  if (!btn) return;
+  // Count commands, not checks: two checks often propose the same install
+  // line, and the batch runs it once. Showing 3 then listing 2 looks broken.
+  const commands = [...new Set(pendingFixes().map(c => c.fix.command))];
+  btn.disabled = state.fixBusy || state.doctorBusy || commands.length === 0;
+  btn.textContent = state.fixBusy ? 'RUNNING\u2026'
+    : commands.length ? `RUN FIXES (${commands.length})` : 'RUN FIXES';
+  btn.title = commands.length
+    ? `Run ${commands.length} command${commands.length === 1 ? '' : 's'}:\n` +
+      commands.map(c => '\u00b7 ' + c).join('\n')
+    : 'Nothing can be fixed automatically right now';
+}
+
+// The server takes check ids, never commands: it re-runs those checks and
+// executes only what they report as auto-runnable. So a stale report cannot
+// run a command for a problem that is already fixed, and nothing here can
+// widen into arbitrary shell.
+async function runFixes(ids) {
+  if (state.fixBusy || !ids.length || !doctorReport) return;
+
+  const commands = [...new Set(
+    doctorReport.checks.filter(c => ids.includes(c.id) && isAutoFix(c)).map(c => c.fix.command)
+  )];
+  if (!commands.length) return;
+
+  // Running shell on someone's machine should never be one unlabelled click.
+  const proceed = confirm(
+    `Run ${commands.length} command${commands.length === 1 ? '' : 's'}?\n\n` +
+    commands.map(c => '  ' + c).join('\n\n') +
+    '\n\nOutput goes to the CONSOLE panel.'
+  );
+  if (!proceed) return;
+
+  state.fixBusy = true;
+  paintFixButton();
+  setFixProgress('starting\u2026');
+
+  const consoleTab = $('.dock-tab[data-dock="process"]');
+  if (consoleTab) consoleTab.click();   // the output is the point
+
+  try {
+    const res = await postJson('/api/job/fixes', { ids, project: state.project });
+    if (res.total === 0) {
+      state.fixBusy = false;
+      setFixProgress('');
+      paintFixButton();
+      toast(res.note || 'Nothing left to fix');
+      runDoctor().catch(() => {});
+    }
+  } catch (e) {
+    state.fixBusy = false;
+    setFixProgress('');
+    paintFixButton();
+    toast(e.message, true);
+  }
+}
+
 function renderDoctor(report) {
   doctorReport = report;
   const host = $('#doctor-list');
@@ -417,6 +514,7 @@ function renderDoctor(report) {
 
   $('#btn-doctor-copy').disabled = false;
   paintDoctorSummary();
+  paintFixButton();
 }
 
 // Partial run: swap only the rows we asked for, keep everything else on screen.
@@ -430,6 +528,7 @@ function patchDoctorChecks(checks) {
     }
   }
   paintDoctorSummary();
+  paintFixButton();
 }
 
 function buildDoctorRow(check) {
@@ -495,6 +594,23 @@ function buildDoctorRow(check) {
         copyText(check.fix.command).then(ok => toast(ok ? 'Command copied' : 'Could not copy', !ok));
       });
       cmdWrap.append(code, copy);
+
+      if (isAutoFix(check)) {
+        const run = document.createElement('button');
+        run.className = 'doctor-rerun doctor-runfix';
+        run.textContent = 'RUN';
+        run.title = 'Run this command now';
+        run.addEventListener('click', () => runFixes([check.id]));
+        cmdWrap.appendChild(run);
+      } else if (check.status !== 'pass' && check.status !== 'skip') {
+        // Without this, a missing RUN button reads as a bug rather than a decision.
+        const manual = document.createElement('span');
+        manual.className = 'doctor-manual';
+        manual.textContent = 'MANUAL';
+        manual.title = 'Not run automatically: this edits files outside the workspace, changes permissions, or stops a process. Read it before you run it.';
+        cmdWrap.appendChild(manual);
+      }
+
       fix.appendChild(cmdWrap);
     }
 
@@ -599,6 +715,11 @@ async function copyText(text) {
 }
 
 $('#btn-doctor-run').addEventListener('click', () => runDoctor());
+
+// Optional chaining on purpose: this button is the newest addition to
+// index.html, and a null here at top level would abort the rest of app.js -
+// every listener below, and boot() itself.
+$('#btn-doctor-fix')?.addEventListener('click', () => runFixes(pendingFixes().map(c => c.id)));
 
 $('#btn-doctor-copy').addEventListener('click', async () => {
   const text = doctorReportText();

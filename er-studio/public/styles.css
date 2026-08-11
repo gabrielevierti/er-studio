@@ -614,3 +614,24 @@ body.electron #topbar a {
 @media (prefers-reduced-motion: reduce) {
   .toast { animation: none; }
 }
+/* doctor: fix runner */
+#btn-doctor-fix:disabled { opacity: .4; cursor: default; }
+.doctor-fix-progress {
+  font-size: 10.5px;
+  color: #7c8798;
+  letter-spacing: .04em;
+  min-width: 60px;
+}
+.doctor-runfix { color: #46e08a; border-color: #1d4a33; }
+.doctor-runfix:hover { background: #0f1a16; }
+.doctor-manual {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .06em;
+  color: #5d6b81;
+  border: 1px solid #232c3a;
+  padding: 1px 4px;
+  margin-left: 6px;
+  cursor: help;
+  align-self: center;
+}

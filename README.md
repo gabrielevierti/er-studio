@@ -4,8 +4,6 @@
 [![Platform](https://img.shields.io/badge/platform-macOS-lightgrey)](https://github.com/gabrielevierti/er-studio)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENCE)
 
-![Splash](splash.png)
-
 Editor, file explorer, live glasses display, simulator control, console, terminal, metrics and packaging — all in one window.
 
 ## Why this exists
@@ -18,41 +16,114 @@ ER Studio doesn't replace the official tooling; it orchestrates it. Under the ho
 
 **How the mirror works.** The simulator is a native LVGL window and can't be embedded. But since v0.7.0 it ships an HTTP automation control plane: launched with `--automation-port`, it exposes the framebuffer as a PNG, the app's console buffer, and TouchBar input injection over plain HTTP. ER Studio runs it as a hidden child process and rebuilds the experience on top of that API — so the pixels are the simulator's pixels, the input is real input, and the logs are your app's real logs. Nothing is emulated or faked.
 
-## What it does
+## Features
 
-**Project lifecycle** — scaffold from the official `evenhub-templates` (degit clone and `npm install` handled for you); one-click **RUN** starts Vite, detects its port from stdout and launches the simulator against it; **PACK** builds and produces the `.ehpk` ready for the developer portal.
+### Text Editor
 
-**Writing code** — Monaco (the engine inside VS Code), fully vendored so it works offline. TS/JS IntelliSense plus highlighting for HTML, CSS/SCSS, JSON, Markdown, YAML, XML and shell. File explorer backed by a filesystem watcher, so the tree updates itself when scaffolds finish or anything changes externally. Draggable splitters; sizes persist across sessions.
+![Text Editor](img/editor.png)
 
-**Running and debugging** — live 576×288 glasses mirror with pixel-perfect PNG capture, TouchBar input pad, embedded phone webview, and a five-panel dock: terminal, unified process log, simulator console with error badges, metrics, and the doctor.
+A full Monaco-based code editor for writing your G2 applications without leaving ER Studio. TypeScript, JavaScript, HTML, CSS, JSON and other project files are all handled directly inside the IDE.
 
-**Environment doctor** — checks the whole local setup and says what's wrong in plain language: Node and npm versions, whether the npm global bin is actually on the PATH ER Studio inherited, simulator and CLI versions, port 9898, config validity, and the selected project down to `app.json` against the documented `evenhub pack` schema. Every failure comes with the exact command or doc link that fixes it, and **COPY REPORT** gives you a paste-ready summary for Discord or a bug report.
+### Workspace
 
-**Desktop app** — a native macOS application (Electron shell embedding the local server) that recaptures focus when the simulator steals it, then hides the simulator window entirely. Also runs in plain browser mode.
+![Workspace](img/workspace.png)
 
-## Architecture
+Browse and manage your entire project workspace directly inside ER Studio. The file tree automatically updates when files are created or changed.
 
-```
-ER Studio window (Electron / browser)
-        │  REST + WebSocket
-ER Studio server (Node, 127.0.0.1 only)
-        ├── /api/fs      workspace file system (path-traversal hardened)
-        ├── /api/run     session control
-        │                  ├─ spawns: npm run dev  (project's Vite)
-        │                  └─ spawns: evenhub-simulator <url> --automation-port 9898
-        ├── /api/sim     proxy → simulator control plane
-        │                  ├─ GET  /screenshot   framebuffer PNG → live mirror
-        │                  ├─ GET  /console      app logs (incremental since_id)
-        │                  └─ POST /input        TouchBar gestures
-        ├── /api/doctor  environment diagnostics
-        └── /ws          status events, process logs, terminal
-```
+### Live G2 Simulator
 
-Everything speaks to official packages. ER Studio adds no custom protocol layer between your app and the platform — what runs in here is exactly what will run when you sideload or submit.
+![Simulator](img/simulator.png)
 
-The stack is deliberately lean: a plain Node server (Express + ws), a vanilla JS frontend with no framework and no build step, and an Electron shell. Monaco and xterm.js are the only heavyweight dependencies, both vendored.
+Run your application and see the G2 simulator directly inside the IDE. The display comes from the official Even Realities simulator, with integrated controls for interacting with the glasses.
 
-Small tool, but built like it expects to be poked at: the server binds to 127.0.0.1 only, every client-supplied path is verified to stay inside the workspace root, simulator input and scaffold parameters are validated against strict allowlists, and a crash in any single handler is caught rather than taking the studio down.
+### Web View
+
+![Web View](img/webview.png)
+
+Preview your application's web interface without opening another browser window. Develop the glasses experience and its web interface side-by-side.
+
+### Terminal
+
+![Terminal](img/terminal.png)
+
+A built-in terminal for running commands, installing dependencies and interacting with your project without leaving ER Studio.
+
+### Console
+
+![Console](img/console.png)
+
+View development-server output, process logs and application messages directly inside the IDE.
+
+### Simulator Console
+
+![Simulator Console](img/simulatorconsole.png)
+
+See the simulator's application console alongside your code and live display, making it easier to identify errors and understand what your application is doing.
+
+### Metrics
+
+![Metrics](img/metrics.png)
+
+Monitor the current simulator session and development environment while testing your application.
+
+### Environment Doctor
+
+![Environment Doctor](img/doctor.png)
+
+A diagnostics panel that checks your local development environment and tells you exactly what is missing or misconfigured.
+
+It checks Node.js, npm, the Even Realities tooling, simulator, CLI, PATH, ports, project configuration and more.
+
+Every problem comes with an actionable explanation of what is wrong and how to fix it.
+
+### SDK Reference
+
+![SDK Reference](img/sdkreference.png)
+
+A searchable reference for the Even Realities SDK, available directly inside the IDE so you don't have to constantly switch between your editor and the documentation.
+
+Look up functions, classes, constants, parameters, return values and other API information while writing your application.
+
+### Run, Stop & Pack
+
+![Buttons](img/buttons.png)
+
+The entire development cycle is controlled from the main toolbar.
+
+**NEW** creates a project from an official Even Realities template.
+
+**RUN** starts the development server and launches the simulator.
+
+**STOP** stops the current development session.
+
+**PACK** builds your application with the official Even Realities CLI and produces the `.ehpk` package.
+
+**Create → Write → Run → Test → Debug → Package.**
+
+**Text Editor**
+For all in one dev and wiriting your apps code
+![Text Editor](img/texteditor.png)
+
+**Simulator**
+![Simulator](img/simulator.png)
+
+**WebView**
+![Simulator](img/webview.png)
+
+![Simulator](img/pack.png)
+
+![Simulator](img/workspace.png)
+
+**Easy Runnning**
+![Text Editor](img/buttons.png)
+
+![Text Editor](img/terminal.png)
+![Text Editor](img/simulatorconsole.png)
+![Text Editor](img/console.png)
+
+![Simulator](img/doctor.png)
+![Simulator](img/referencesdk.png)
+![Simulator](img/metrics.png)
 
 ## Getting started
 
@@ -86,21 +157,6 @@ Point ER Studio at your projects folder with `~/.er-studio.json`:
 Then: **NEW** → pick a template → **RUN** → watch the lens come alive.
 
 On first launch macOS asks permission to control System Events (that's the window-hiding mechanism), and since the build is unsigned the packaged app needs right-click → Open the first time. If anything doesn't work, the **DOCTOR** panel will tell you why.
-
-## Honest limits
-
-- The simulator is **not a hardware emulator** — frame pacing, BLE timing and on-device performance aren't reproduced, and the metrics panel describes the simulator session, not the glasses. I can't close that gap yet, since I don't own a pair.
-- The mirror's frame rate is bounded by how fast the simulator serves screenshots.
-- The interactive pty terminal depends on `node-pty` building on your machine; when it can't, ER Studio degrades to a line-based command runner automatically.
-- macOS only for now. The server core is platform-neutral — window hiding and focus recapture are the macOS-specific parts, and help with Windows and Linux is very welcome.
-
-## Roadmap
-
-- Automated pre-submission QA panel: headless checks against the App Submission guidelines, built on the same automation API
-- QR sideload helper for on-device testing
-- Frame-diff visualization on the mirror
-- BLE-level metrics and, eventually, direct PC-to-glasses development
-- G1 support, if a sensible path through the community tooling emerges
 
 ## Contributing
 
