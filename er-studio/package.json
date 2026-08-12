@@ -19,7 +19,7 @@
   "optionalDependencies": {
     "node-pty": "^1.0.0"
   },
-  "devDependencies": {
+  "devDependencies": {  
   "@electron/rebuild": "^3.7.0",
   "electron": "^33.2.0",
   "electron-builder": "^25.1.8"
@@ -31,6 +31,7 @@
       "electron/**",
       "server/**",
       "public/**",
+      "data/**",
       "package.json"
     ],
     "asarUnpack": [
