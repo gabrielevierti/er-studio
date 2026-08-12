@@ -48,6 +48,31 @@
     return html;
   }
 
+  /* ---------------- official docs links ----------------
+     Even's docs have no per-symbol API page - they say the .d.ts is the
+     authoritative reference and document the API by topic. The old button
+     ignored that and sent every symbol to the marketing site, which is why it
+     never opened anything useful. So: name the page the link actually opens,
+     and when the match is only a group-level fallback, say so rather than
+     dressing it up as a precise answer. */
+
+  function docLinkHtml(sym) {
+    if (!sym.docUrl) return '';
+    const exact = sym.docPrecision === 'exact';
+    const page = sym.docLabel || sym.docUrl;
+    const label = sym.docLabel ? sym.docLabel : (exact ? 'Official docs' : 'Docs');
+    const title = exact
+      ? `Opens the official page documenting ${sym.name}: ${page}`
+      : `No dedicated page for ${sym.name}. Opens the closest official page: ${page}`;
+    return `<a class="icon-btn ref-doclink${exact ? '' : ' approx'}" href="${esc(sym.docUrl)}"
+              target="_blank" rel="noopener" title="${esc(title)}">${esc(label.toUpperCase())} \u2197</a>`;
+  }
+
+  const memberDocHtml = m => (m.docUrl
+    ? `<a class="ref-member-doc" href="${esc(m.docUrl)}" target="_blank" rel="noopener"
+         title="${esc('Official docs: ' + (m.docLabel || m.docUrl))}">DOCS \u2197</a>`
+    : '');
+
   const langBadge = lang =>
     lang === 'zh' ? '<span class="ref-lang zh" title="Original SDK doc comment (Chinese) - no overlay entry yet">ZH</span>'
     : lang === 'en' ? '<span class="ref-lang en" title="English text from data/sdk-overlay.json">EN</span>'
@@ -91,6 +116,7 @@
     if (drift.overlayStale) problems.push(`overlay authored against ${d.overlayAuthoredAgainst}, installed is ${d.version}`);
     if (drift.unparsedExports && drift.unparsedExports.length) problems.push(`${drift.unparsedExports.length} export(s) the parser did not recognise`);
     if (drift.orphanedOverlayEntries && drift.orphanedOverlayEntries.length) problems.push(`${drift.orphanedOverlayEntries.length} overlay entr(y/ies) for symbols that no longer exist`);
+    if (drift.symbolsWithoutDocLink && drift.symbolsWithoutDocLink.length) problems.push(`${drift.symbolsWithoutDocLink.length} symbol(s) with no dedicated docs page`);
     warn.hidden = problems.length === 0;
     warn.textContent = problems.join(' — ');
   }
@@ -191,6 +217,7 @@
         ${m.static ? '<span class="ref-tag">static</span>' : ''}
         ${m.optional ? '<span class="ref-tag">optional</span>' : ''}
         ${langBadge(m.lang)}
+        ${memberDocHtml(m)}
       </div>
       ${m.summary ? `<div class="ref-body">${renderDoc(m.summary)}</div>` : ''}
       ${notes ? `<ul class="ref-notes">${notes}</ul>` : ''}
@@ -224,7 +251,7 @@
           ${sym.typeOnly ? '<span class="ref-tag">type-only export</span>' : ''}
         </div>
         <div class="ref-detail-actions">
-          ${sym.docUrl ? `<a class="icon-btn" href="${esc(sym.docUrl)}" target="_blank" rel="noopener">OFFICIAL DOCS</a>` : ''}
+          ${docLinkHtml(sym)}
           <button class="icon-btn" id="ref-copy-name" title="Copy symbol name">COPY</button>
         </div>
       </div>
@@ -291,6 +318,22 @@
   /* ---------------- wiring ---------------- */
 
   function wire() {
+    // Bound to the event, not the tab element: panels.js rebuilds tabs on
+    // every layout change, so an element-bound listener dies the first time
+    // anything moves.
+    window.addEventListener('panel:activate', ev => {
+      if (ev.detail.panel !== 'sdkref') return;
+      load(false);
+      const search = $('#ref-search');
+      if (search) setTimeout(() => search.focus(), 0);
+    });
+
+    // Docking or detaching re-parents the panel; reload so a window that was
+    // opened before a project was selected doesn't sit there empty.
+    window.addEventListener('panel:moved', ev => {
+      if (ev.detail.panel === 'sdkref') load(false);
+    });
+
     $('#ref-search').addEventListener('input', ev => {
       refState.query = ev.target.value;
       renderList();
@@ -338,7 +381,7 @@
       refState.loadedForProject = null;
       refState.extraLibFor = null;
       syncMonacoTypes();
-      if (isPanelVisible()) load(true);
+      if (isPanelVisible() || ERPanels.isFloating('sdkref')) load(true);
     });
   }
 

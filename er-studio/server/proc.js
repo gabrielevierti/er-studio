@@ -6,6 +6,7 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const { PROJECT_PACKAGE } = require('./sdk');
 
 const SIM_AUTOMATION_PORT = 9898;
 
@@ -188,7 +189,9 @@ function createProcessManager(workspaceRoot, broadcast) {
     const dest = path.join(workspaceRoot, name);
     if (fs.existsSync(dest)) return { error: 'A project with that name already exists' };
     state.job = { kind: 'scaffold', project: name, startedAt: Date.now() };
-    const cmd = `npx -y degit "even-realities/evenhub-templates/${template}" "$DEST" && cd "$DEST" && npm install`;
+    const cmd = `npx -y degit "even-realities/evenhub-templates/${template}" "$DEST" `
+          + `&& cd "$DEST" && npm install `
+          + `&& npm i ${PROJECT_PACKAGE}@latest`;
     jobProc = spawnGroup('/bin/sh', ['-c', cmd], workspaceRoot, 'job', { DEST: dest });
     jobProc.on('exit', code => {
       log('job', Buffer.from(`[er-studio] scaffold ${code === 0 ? 'completed' : 'failed'} (code ${code})`));

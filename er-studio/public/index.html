@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ever Realities Studio</title>
+<title>Even Realities Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -30,8 +30,8 @@
   </div>
 
   <div class="topbar-group pills">
-    <span class="pill" id="pill-vite" data-state="off">VITE <b>—</b></span>
-    <span class="pill" id="pill-sim" data-state="off">SIM <b>—</b></span>
+    <span class="pill" id="pill-vite" data-state="off">VITE <b>&mdash;</b></span>
+    <span class="pill" id="pill-sim" data-state="off">SIM <b>&mdash;</b></span>
   </div>
 
   <div class="topbar-group topbar-right">
@@ -41,16 +41,9 @@
 
 <main id="layout">
 
-  <aside id="sidebar">
-    <div class="panel-head">
-      <span>WORKSPACE</span>
-      <span class="panel-actions">
-        <button class="icon-btn" id="btn-new-file" title="New file">+F</button>
-        <button class="icon-btn" id="btn-new-dir" title="New folder">+D</button>
-        <button class="icon-btn" style="font-size: 14px;" id="btn-refresh-tree" title="Refresh">↻</button>
-      </span>
-    </div>
-    <div id="file-tree" class="mono"></div>
+  <aside class="zone" id="zone-left" data-zone="left">
+    <div class="zone-tabs" role="tablist"></div>
+    <div class="zone-stack"></div>
   </aside>
 
   <div class="splitter splitter-v" id="split-sidebar" title="Drag to resize - double-click to reset"></div>
@@ -67,101 +60,224 @@
 
   <div class="splitter splitter-v" id="split-devices" title="Drag to resize - double-click to reset"></div>
 
-  <aside id="devices">
-    <div class="panel-head">
-      <span>DISPLAY</span>
-      <span class="panel-actions">
-        <button class="icon-btn" id="btn-snap" title="Save framebuffer PNG">CAPTURE</button>
-      </span>
-    </div>
-
-    <div id="lens-wrap">
-      <div id="lens">
-        <canvas id="glasses-canvas" width="576" height="288"></canvas>
-        <div id="lens-offline" class="mono">SIM OFFLINE</div>
-      </div>
-      <div class="lens-meta mono">
-        <span>576×288 · MONO GREEN</span>
-        <span id="lens-fps">0.0 FPS</span>
-      </div>
-    </div>
-
-    <div id="input-pad">
-      <div class="pad-label">INPUT</div>
-      <div class="pad-buttons">
-        <button class="btn pad-btn" data-action="up">UP</button>
-        <button class="btn pad-btn" data-action="down">DOWN</button>
-        <button class="btn pad-btn" data-action="click">CLICK</button>
-        <button class="btn pad-btn" data-action="double_click">DOUBLE CLICK</button>
-      </div>
-    </div>
-
-    <div class="panel-head webview-head">
-      <span>WEBVIEW</span>
-      <span class="panel-actions">
-        <button class="icon-btn" id="btn-webview-reload" style="font-size: 14px;" title="Reload iframe">↻</button>
-        <a class="icon-btn" id="btn-webview-open" title="Open in new tab" target="_blank" rel="noopener">OPEN</a>
-      </span>
-    </div>
-    <div id="webview-wrap">
-      <iframe id="webview" title="Plugin webview"></iframe>
-      <div id="webview-offline" class="mono">DEV SERVER OFFLINE</div>
-    </div>
+  <aside class="zone" id="zone-right" data-zone="right">
+    <div class="zone-tabs" role="tablist"></div>
+    <div class="zone-stack"></div>
   </aside>
 
 </main>
 
 <div class="splitter splitter-h" id="split-dock" title="Drag to resize - double-click to reset"></div>
 
-<section id="dock">
-  <div id="dock-tabs">
-    <button class="dock-tab active" data-dock="terminal">TERMINAL</button>
-    <button class="dock-tab" data-dock="process">CONSOLE<span class="badge" id="badge-process"></span></button>
-    <button class="dock-tab" data-dock="glasses-console">SIMULATOR CONSOLE <span class="badge badge-err" id="badge-console"></span></button>
-    <button class="dock-tab" data-dock="metrics">METRICS</button>
-    <button class="dock-tab" data-dock="doctor">DOCTOR <span class="badge" id="badge-doctor"></span></button>
-    <button class="dock-tab" data-dock="sdkref">REFERENCE</button>
-    <span class="dock-spacer"></span>
-    <button class="icon-btn" id="btn-dock-clear" title="Clear active panel">CLEAR</button>
+<section class="zone" id="zone-bottom" data-zone="bottom">
+  <div class="zone-tabs" role="tablist"></div>
+  <div class="zone-stack"></div>
+</section>
+
+<!--
+  Panel bodies live here until the dock manager places them in a zone or a
+  floating window. Every panel carries its own toolbar, which is why CLEAR
+  only appears on the panels that actually have something to clear.
+-->
+<div id="panel-store" hidden>
+
+  <div class="dock-panel" id="dock-workspace">
+    <div class="panel-bar">
+      <span class="bar-title" id="bar-workspace-path">workspace</span>
+      <span class="dock-spacer"></span>
+      <button class="icon-btn" id="btn-new-file" title="New file">+F</button>
+      <button class="icon-btn" id="btn-new-dir" title="New folder">+D</button>
+      <button class="icon-btn" id="btn-refresh-tree" style="font-size:14px" title="Refresh">&#8635;</button>
+    </div>
+    <div id="file-tree" class="mono"></div>
   </div>
 
-  <div class="dock-panel active" id="dock-terminal"><div id="xterm-host"></div></div>
+  <div class="dock-panel" id="dock-display">
+    <div class="panel-bar">
+      <span class="bar-title">576&times;288 &middot; mono green</span>
+      <span class="dock-spacer"></span>
+      <button class="icon-btn" id="btn-snap" title="Save framebuffer PNG">CAPTURE</button>
+    </div>
+    <div id="display-scroll">
+      <div id="lens-wrap">
+        <div id="lens">
+          <canvas id="glasses-canvas" width="576" height="288"></canvas>
+          <div id="lens-offline" class="mono">SIM OFFLINE</div>
+        </div>
+        <div class="lens-meta mono">
+          <span id="lens-state">idle</span>
+          <span id="lens-fps">0.0 FPS</span>
+        </div>
+      </div>
+      <div id="input-pad">
+        <div class="pad-label">INPUT</div>
+        <div class="pad-buttons">
+          <button class="btn pad-btn" data-action="up">UP</button>
+          <button class="btn pad-btn" data-action="down">DOWN</button>
+          <button class="btn pad-btn" data-action="click">CLICK</button>
+          <button class="btn pad-btn" data-action="double_click">DOUBLE CLICK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dock-panel" id="dock-webview">
+    <div class="panel-bar">
+      <span class="bar-title" id="bar-webview-url">dev server offline</span>
+      <span class="dock-spacer"></span>
+      <button class="icon-btn" id="btn-webview-reload" style="font-size:14px" title="Reload iframe">&#8635;</button>
+      <a class="icon-btn" id="btn-webview-open" title="Open in your browser" target="_blank" rel="noopener">OPEN</a>
+    </div>
+    <div id="webview-wrap">
+      <iframe id="webview" title="Plugin webview"></iframe>
+      <div id="webview-offline" class="mono">DEV SERVER OFFLINE</div>
+    </div>
+  </div>
+
+  <div class="dock-panel" id="dock-terminal">
+    <div class="panel-bar">
+      <span class="bar-title" id="bar-terminal-mode">shell</span>
+      <span class="dock-spacer"></span>
+      <button class="icon-btn panel-clear" data-clear="terminal" title="Clear the terminal">CLEAR</button>
+    </div>
+    <div id="xterm-host"></div>
+  </div>
 
   <div class="dock-panel" id="dock-process">
+    <div class="panel-bar">
+      <span class="bar-title">vite &middot; sim &middot; jobs</span>
+      <span class="dock-spacer"></span>
+      <button class="icon-btn panel-clear" data-clear="process" title="Clear the console">CLEAR</button>
+    </div>
     <div class="log-scroll mono" id="process-log"></div>
   </div>
 
   <div class="dock-panel" id="dock-glasses-console">
+    <div class="panel-bar">
+      <span class="bar-title">console output from the running app</span>
+      <span class="dock-spacer"></span>
+      <button class="icon-btn panel-clear" data-clear="glasses-console" title="Clear the simulator console">CLEAR</button>
+    </div>
     <div class="log-scroll mono" id="glasses-log"></div>
   </div>
 
   <div class="dock-panel" id="dock-metrics">
-    <div id="metrics-grid">
-      <div class="metric"><div class="metric-label">UPTIME</div><div class="metric-value mono" id="m-uptime">—</div></div>
-      <div class="metric"><div class="metric-label">BOOT -> FIRST RENDER</div><div class="metric-value mono" id="m-boot">—</div></div>
-      <div class="metric"><div class="metric-label">LIT PIXELS</div><div class="metric-value mono" id="m-lit">—</div><div class="metric-sub mono" id="m-lit-pct"></div></div>
-      <div class="metric"><div class="metric-label">FRAME DELTA</div><div class="metric-value mono" id="m-delta">—</div><div class="metric-sub">px changed vs previous sample</div></div>
-      <div class="metric"><div class="metric-label">LATENCY</div><div class="metric-value mono" id="m-fps">—</div><div class="metric-sub mono" id="m-latency"></div></div>
-      <div class="metric"><div class="metric-label">CONSOLE ERRORS</div><div class="metric-value mono" id="m-errors">0</div><div class="metric-sub mono" id="m-warns">0 warnings</div></div>
-      <div class="metric"><div class="metric-label">ER STUDIO HOST</div><div class="metric-value mono" id="m-host">—</div><div class="metric-sub">server RSS</div></div>
+    <div class="panel-bar">
+      <span class="metrics-state mono" id="m-state" data-state="idle">IDLE</span>
+      <span class="bar-title" id="m-project">no project</span>
+      <span class="dock-spacer"></span>
+      <button class="icon-btn" id="btn-metrics-reset" title="Clear the sampled history">RESET</button>
     </div>
-    <div class="metrics-note">Simulator metrics reflect the desktop simulator only. Frame pacing, BLE timing and on-device performance are not reproduced and will be implemented in the future — always validate on real hardware before shipping.</div>
+
+    <div class="metrics-scroll">
+
+      <div class="metrics-section">
+        <div class="metrics-head">SESSION</div>
+        <div class="metric-grid">
+          <div class="metric">
+            <div class="metric-label">UPTIME</div>
+            <div class="metric-value mono" id="m-uptime">&mdash;</div>
+            <div class="metric-sub mono" id="m-uptime-sub">not running</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">BOOT &rarr; FIRST RENDER</div>
+            <div class="metric-value mono" id="m-boot">&mdash;</div>
+            <div class="metric-sub">simulator start to first lit pixel</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">DEV SERVER</div>
+            <div class="metric-value mono" id="m-vite">&mdash;</div>
+            <div class="metric-sub mono" id="m-vite-sub">not running</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">SIMULATOR</div>
+            <div class="metric-value mono" id="m-sim">&mdash;</div>
+            <div class="metric-sub mono" id="m-sim-sub">not running</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="metrics-section">
+        <div class="metrics-head">DISPLAY PIPELINE</div>
+        <div class="metric-grid">
+          <div class="metric">
+            <div class="metric-label">MIRROR FRAME RATE</div>
+            <div class="metric-value mono" id="m-fps">&mdash;</div>
+            <div class="metric-sub mono" id="m-fps-sub">rolling 3 s window</div>
+            <canvas class="spark" data-spark="fps"></canvas>
+          </div>
+          <div class="metric">
+            <div class="metric-label">FRAME FETCH p50 / p95</div>
+            <div class="metric-value mono" id="m-latency">&mdash;</div>
+            <div class="metric-sub mono" id="m-latency-sub">round trip to the simulator</div>
+            <canvas class="spark" data-spark="latency"></canvas>
+          </div>
+          <div class="metric">
+            <div class="metric-label">LIT PIXELS</div>
+            <div class="metric-value mono" id="m-lit">&mdash;</div>
+            <div class="metric-sub mono" id="m-lit-pct">of 165,888 px framebuffer</div>
+            <canvas class="spark" data-spark="lit"></canvas>
+          </div>
+          <div class="metric">
+            <div class="metric-label">FRAME DELTA</div>
+            <div class="metric-value mono" id="m-delta">&mdash;</div>
+            <div class="metric-sub mono" id="m-delta-sub">px changed vs previous sample</div>
+            <canvas class="spark" data-spark="delta"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="metrics-section">
+        <div class="metrics-head">OUTPUT &amp; HOST</div>
+        <div class="metric-grid">
+          <div class="metric">
+            <div class="metric-label">CONSOLE ERRORS</div>
+            <div class="metric-value mono" id="m-errors">0</div>
+            <div class="metric-sub mono" id="m-warns">0 warnings</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">PROCESS LINES</div>
+            <div class="metric-value mono" id="m-proclines">0</div>
+            <div class="metric-sub mono" id="m-proclines-sub">since launch</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">ER STUDIO SERVER</div>
+            <div class="metric-value mono" id="m-host">&mdash;</div>
+            <div class="metric-sub mono" id="m-host-sub">resident memory</div>
+            <canvas class="spark" data-spark="rss"></canvas>
+          </div>
+          <div class="metric">
+            <div class="metric-label">SERVER CPU</div>
+            <div class="metric-value mono" id="m-cpu">&mdash;</div>
+            <div class="metric-sub mono" id="m-cpu-sub">of one core</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="metrics-note">
+        These numbers describe the desktop simulator and ER Studio's own mirror loop &mdash; not the glasses.
+        Frame pacing, BLE timing and on-device performance are not reproduced here, so always validate on real hardware before shipping.
+      </div>
+    </div>
   </div>
 
   <div class="dock-panel" id="dock-doctor">
-    <div id="doctor-bar">
+    <div class="panel-bar" id="doctor-bar">
       <button class="btn btn-run" id="btn-doctor-run">RUN CHECKS</button>
+      <button class="btn btn-fix" id="btn-doctor-fix" disabled>RUN FIXES</button>
       <button class="btn btn-ghost" id="btn-doctor-copy" title="Plain-text summary for Discord or a bug report" disabled>COPY REPORT</button>
       <label class="doctor-opt mono"><input type="checkbox" id="doctor-autorun" checked> check at launch</label>
+      <span class="doctor-fix-progress mono" id="doctor-fix-progress"></span>
       <span class="dock-spacer"></span>
       <span class="doctor-summary mono" id="doctor-summary">not run yet</span>
     </div>
+    <div id="doctor-results" hidden></div>
     <div id="doctor-list" class="doctor-scroll"></div>
   </div>
 
   <div class="dock-panel" id="dock-sdkref">
-    <div id="ref-bar">
-      <input type="text" id="ref-search" class="mono" placeholder="search SDK symbols…" spellcheck="false">
+    <div class="panel-bar" id="ref-bar">
+      <input type="text" id="ref-search" class="mono" placeholder="search SDK symbols&hellip;" spellcheck="false">
       <label class="ref-opt mono"><input type="checkbox" id="ref-follow" checked> follow cursor</label>
       <button class="icon-btn" id="ref-reload" title="Re-read the overlay and the installed SDK">RELOAD</button>
       <span class="dock-spacer"></span>
@@ -173,23 +289,24 @@
       <div id="ref-detail"><div class="ref-empty">Select a symbol, or put the cursor on one in the editor.</div></div>
     </div>
   </div>
-  </section>
+
+</div>
 
 <footer id="statusbar" class="mono">
-  <span id="status-workspace">workspace: —</span>
+  <span id="status-workspace">workspace: &mdash;</span>
   <span id="status-file"></span>
-  <span id="status-sdk" data-state="off">sdk: —</span> 
+  <span id="status-sdk" data-state="off">sdk: &mdash;</span>
   <span class="status-spacer"></span>
+  <span id="status-float" hidden></span>
   <span id="status-conn" data-state="off">DISCONNECTED</span>
 </footer>
 
-<!-- New project modal -->
 <div class="modal-backdrop" id="modal-new" hidden>
   <div class="modal">
     <div class="modal-title">NEW PROJECT</div>
     <label class="field-label">NAME</label>
     <input type="text" id="np-name" class="mono" placeholder="my-plugin" spellcheck="false">
-    <label class="field-label">TEMPLATE — official evenhub-templates</label>
+    <label class="field-label">TEMPLATE &mdash; official evenhub-templates</label>
     <div class="template-grid" id="np-templates">
       <button class="template-card selected" data-t="minimal"><b>minimal</b><span>Bare scaffold, single page</span></button>
       <button class="template-card" data-t="asr"><b>asr</b><span>Speech recognition (mic stream)</span></button>
@@ -203,7 +320,6 @@
   </div>
 </div>
 
-<!-- Prompt modal (new file / rename) -->
 <div class="modal-backdrop" id="modal-prompt" hidden>
   <div class="modal">
     <div class="modal-title" id="mp-title">INPUT</div>
@@ -215,6 +331,20 @@
   </div>
 </div>
 
+<!-- Nothing runs until this has been read and accepted. -->
+<div class="modal-backdrop" id="modal-fixes" hidden>
+  <div class="modal modal-wide">
+    <div class="modal-title">APPLY FIXES</div>
+    <p class="modal-lead" id="fx-lead">These commands will run on your machine, in order.</p>
+    <div class="fix-list" id="fx-list"></div>
+    <p class="modal-foot">Only fixes ER Studio considers safe to automate are offered. Anything that changes permissions, clears a quarantine flag, or bumps a dependency mid-project stays manual &mdash; copy those and read them first. Output goes to the CONSOLE panel.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="fx-cancel">CANCEL</button>
+      <button class="btn btn-run" id="fx-run">RUN THESE FIXES</button>
+    </div>
+  </div>
+</div>
+
 <div id="ctx-menu" class="mono" hidden></div>
 <div id="toast-host"></div>
 
@@ -222,6 +352,7 @@
 <script src="vendor/xterm/xterm-addon-fit.js"></script>
 <script src="vendor/monaco/vs/loader.js"></script>
 <script src="app.js"></script>
+<script src="panels.js"></script>
 <script src="sdkref.js"></script>
 </body>
 </html>

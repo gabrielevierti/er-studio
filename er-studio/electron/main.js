@@ -103,10 +103,43 @@ async function boot() {
 
   win.setMenuBarVisibility(false);
 
-  // External links (OPEN webview button etc.) go to the default browser.
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
-    return { action: 'deny' };
+  // Two very different kinds of window.open reach here:
+  //
+  //   - a torn-off panel, which is same-origin (our own server) and must open
+  //     as a real child window, at the exact screen coordinates the drag
+  //     ended on - including negative or very large ones, which is how a panel
+  //     lands on a second monitor
+  //   - anything else (OPEN webview, DOCS links), which belongs in the user's
+  //     browser, not inside the IDE
+  const appOrigin = `http://127.0.0.1:${serverHandle.port}`;
+
+  win.webContents.setWindowOpenHandler(({ url, features }) => {
+    if (!url.startsWith(appOrigin)) {
+      shell.openExternal(url);
+      return { action: 'deny' };
+    }
+
+    // window.open features arrive as a comma-separated string.
+    const feature = name => {
+      const m = new RegExp(`(?:^|,)\\s*${name}\\s*=\\s*(-?\\d+)`).exec(features || '');
+      return m ? parseInt(m[1], 10) : undefined;
+    };
+
+    return {
+      action: 'allow',
+      overrideBrowserWindowOptions: {
+        x: feature('left'),
+        y: feature('top'),
+        width: feature('width') || 900,
+        height: feature('height') || 600,
+        minWidth: 320,
+        minHeight: 220,
+        backgroundColor: '#080b11',
+        titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+        autoHideMenuBar: true,
+        webPreferences: { contextIsolation: true, nodeIntegration: false }
+      }
+    };
   });
 
   let lastSimAlive = false;

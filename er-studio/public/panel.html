@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ER Studio - panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="vendor/xterm/xterm.css">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="sdkref.css">
+</head>
+<!--
+  A torn-off panel window. This page is deliberately inert: it renders a title
+  strip and an empty root, and the main window moves the live panel node into
+  it. Nothing here re-creates the panel, so its listeners, its canvas contents
+  and its scrollback all survive being pulled out and pushed back.
+
+  Closing the window hands the node back to the main window first - see the
+  pagehide handler in panels.js.
+-->
+<body class="float-window">
+
+<header id="float-bar">
+  <span class="brand">ER<span class="brand-sep">://</span>STUDIO</span>
+  <span id="float-title" class="mono">PANEL</span>
+  <span class="dock-spacer"></span>
+  <button class="icon-btn" id="float-dock" title="Return this panel to the main window">DOCK</button>
+</header>
+
+<div id="float-root"></div>
+
+<noscript>ER Studio panel windows need JavaScript.</noscript>
+
+<script>
+  // The opener drives everything. If this window somehow outlives it there is
+  // nothing left to hand the panel back to, so close rather than sit there
+  // holding a node nobody can reach.
+  (function () {
+    if (!window.opener || window.opener.closed) { window.close(); return; }
+    setInterval(function () {
+      if (!window.opener || window.opener.closed) window.close();
+    }, 2000);
+  })();
+
+  if (/Electron/.test(navigator.userAgent) && /Mac/.test(navigator.userAgent)) {
+      document.body.classList.add('mac-inset');
+    }
+</script>
+</body>
+</html>

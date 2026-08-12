@@ -18,7 +18,7 @@ const { createSimRouter } = require('./sim');
 const { attachTerminal, hasPty } = require('./term');
 const { createSdkRouter } = require('./sdk');
 const { createSdkRefRouter } = require('./sdkref');
-const { createDoctorRouter } = require('./doctor');
+const { createDoctorRouter, resolveAutoFixes } = require('./doctor');
 
 // Optional user config: ~/.er-studio.json  { "workspace": "...", "port": 4477 }
 function readUserConfig() {
@@ -102,13 +102,15 @@ async function startServer(options = {}) {
   app.use('/api/sim', createSimRouter(SIM_AUTOMATION_PORT));
   app.use('/api/sdk', createSdkRouter(workspace));
   app.use('/api/sdkref', createSdkRefRouter(workspace));
-  app.use('/api/doctor', createDoctorRouter({
+  const doctorContext = {
     workspace,
     hasPty,
     procman,
     simAutomationPort: SIM_AUTOMATION_PORT,
     appVersion: require('../package.json').version
-  }));
+  };
+
+  app.use('/api/doctor', createDoctorRouter(doctorContext));
 
   app.get('/api/state', (req, res) => {
     res.json({ workspace, hasPty, state: procman.publicState() });
@@ -139,9 +141,57 @@ async function startServer(options = {}) {
     res.status(r.error ? 400 : 200).json(r);
   });
 
+  // Run the fixes the DOCTOR panel offers.
+  //
+  // The client posts check ids, never commands. resolveAutoFixes re-runs those
+  // checks and returns only what they *currently* report as auto-runnable, so
+  // a stale panel cannot execute a fix for a problem that is already solved,
+  // and no client input reaches the shell.
+  app.post('/api/job/fixes', async (req, res) => {
+    const { ids, project } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'No checks named' });
+    }
+
+    let resolved;
+    try {
+      resolved = await resolveAutoFixes(doctorContext, ids, project);
+    } catch (err) {
+      return res.status(500).json({ error: String(err.message || err) });
+    }
+
+    if (resolved.commands.length === 0) {
+      // Not an error: the usual cause is that the problem fixed itself, or was
+      // fixed by an earlier command in the same batch.
+      return res.json({ ok: true, total: 0, note: 'Nothing left to fix - those checks now pass' });
+    }
+
+    const r = procman.runFixes(resolved.commands);
+    if (r.error) return res.status(409).json(r);
+    res.json({ ...r, commands: resolved.commands, ids: resolved.checks.map(c => c.id) });
+  });
+
+  // Sampled by the METRICS panel. Cheap enough to poll every few seconds.
+  let lastCpu = process.cpuUsage();
+  let lastCpuAt = Date.now();
   app.get('/api/metrics/host', (req, res) => {
     const mem = process.memoryUsage();
-    res.json({ rssMb: +(mem.rss / 1048576).toFixed(1), uptimeS: Math.round(process.uptime()) });
+
+    const now = Date.now();
+    const delta = process.cpuUsage(lastCpu);
+    const elapsedUs = Math.max(1, (now - lastCpuAt) * 1000);
+    lastCpu = process.cpuUsage();
+    lastCpuAt = now;
+
+    res.json({
+      rssMb: +(mem.rss / 1048576).toFixed(1),
+      heapMb: +(mem.heapUsed / 1048576).toFixed(1),
+      heapTotalMb: +(mem.heapTotal / 1048576).toFixed(1),
+      cpuPct: +(((delta.user + delta.system) / elapsedUs) * 100).toFixed(1),
+      uptimeS: Math.round(process.uptime()),
+      loadAvg1: +(os.loadavg()[0] || 0).toFixed(2),
+      cpuCount: os.cpus().length
+    });
   });
 
   const port = await new Promise((resolve, reject) => {

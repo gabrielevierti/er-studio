@@ -185,7 +185,150 @@
   },
 
   "docLinks": {
-    "default": "https://www.evenrealities.com/developer",
-    "bySymbol": {}
+    "$comment": [
+      "Where OFFICIAL DOCS goes for a given symbol.",
+      "",
+      "The old default, evenrealities.com/developer, is the marketing site -",
+      "it has no API content at all, which is why the button felt broken: it",
+      "was a placeholder that every symbol fell through to.",
+      "",
+      "There is no per-symbol API page to link to. Even's own docs say the",
+      "*.d.ts files are the authoritative reference and document the API by",
+      "TOPIC instead (page lifecycle, display, device APIs). So the mapping",
+      "below is topic-based, and the panel labels the link with the page it",
+      "actually opens rather than pretending it is a symbol page.",
+      "",
+      "Resolution order, in sdkref.js merge():",
+      "  members  byMember['Owner.member'] -> byMember['member'] -> owner link",
+      "  symbols  bySymbol[name] -> byGroup[group] -> default",
+      "",
+      "Anything unmapped resolves to the docs root, never to a dead anchor.",
+      "Anchors verified against the live site 2026-08-12."
+    ],
+
+    "docsBase": "https://hub.evenrealities.com/docs",
+    "default": "https://hub.evenrealities.com/docs",
+
+    "byGroup": {
+      "bridge": "https://hub.evenrealities.com/docs/build/device-apis",
+      "containers": "https://hub.evenrealities.com/docs/build/display",
+      "events": "https://hub.evenrealities.com/docs/build/device-apis",
+      "device": "https://hub.evenrealities.com/docs/build/device-apis",
+      "enums": "https://hub.evenrealities.com/docs/build/device-apis",
+      "utils": "https://www.npmjs.com/package/@evenrealities/even_hub_sdk",
+      "other": "https://hub.evenrealities.com/docs"
+    },
+
+    "bySymbol": {
+      "EvenAppBridge": "https://hub.evenrealities.com/docs/build/device-apis",
+      "waitForEvenAppBridge": "https://hub.evenrealities.com/docs/get-started/quickstart/first-app",
+
+      "CreateStartUpPageContainer": "https://hub.evenrealities.com/docs/build/page-lifecycle#methods",
+      "RebuildPageContainer": "https://hub.evenrealities.com/docs/build/page-lifecycle#methods",
+      "ShutDownContaniner": "https://hub.evenrealities.com/docs/build/page-lifecycle#methods",
+
+      "TextContainerProperty": "https://hub.evenrealities.com/docs/build/display#text-containers",
+      "ImageContainerProperty": "https://hub.evenrealities.com/docs/build/display#image-containers",
+      "ListContainerProperty": "https://hub.evenrealities.com/docs/build/display#list-containers",
+      "ListItemContainerProperty": "https://hub.evenrealities.com/docs/build/display#list-containers",
+      "validateEvenHubPageContainerZOrder": "https://hub.evenrealities.com/docs/build/display#stacking-order-zorderindex",
+
+      "EvenHubEvent": "https://hub.evenrealities.com/docs/build/device-apis#handling-events",
+      "EvenHubEventType": "https://hub.evenrealities.com/docs/build/device-apis#event-types",
+      "OsEventTypeList": "https://hub.evenrealities.com/docs/build/device-apis#event-types",
+      "AudioEventPayload": "https://hub.evenrealities.com/docs/build/device-apis#audio",
+      "ImuReportPace": "https://hub.evenrealities.com/docs/build/device-apis#imureportpace",
+
+      "ImageRawDataUpdateResult": "https://hub.evenrealities.com/docs/build/page-lifecycle#result-codes",
+      "StartUpPageCreateResult": "https://hub.evenrealities.com/docs/build/page-lifecycle#result-codes",
+      "EvenHubErrorCodeName": "https://hub.evenrealities.com/docs/reference/glossary",
+
+      "DeviceInfo": "https://hub.evenrealities.com/docs/build/device-apis#device-info",
+      "DeviceStatus": "https://hub.evenrealities.com/docs/build/device-apis#device-info",
+      "DeviceConnectType": "https://hub.evenrealities.com/docs/build/device-apis#device-info",
+      "UserInfo": "https://hub.evenrealities.com/docs/build/device-apis#user-info",
+      "LaunchSource": "https://hub.evenrealities.com/docs/build/background-lifecycle",
+
+      "AppImageAsset": "https://hub.evenrealities.com/docs/build/device-apis#appimageasset-shape",
+      "appImageAssetFromJson": "https://hub.evenrealities.com/docs/build/device-apis#photos",
+      "AppLocation": "https://hub.evenrealities.com/docs/build/device-apis#applocation-shape",
+      "AppLocationAccuracy": "https://hub.evenrealities.com/docs/build/device-apis#applocationaccuracy",
+      "appLocationFromJson": "https://hub.evenrealities.com/docs/build/device-apis#location",
+      "AppLocationOptions": "https://hub.evenrealities.com/docs/build/device-apis#continuous",
+      "AudioEvent": "https://hub.evenrealities.com/docs/build/device-apis#audio",
+      "AudioInputSource": "https://hub.evenrealities.com/docs/build/device-apis#audioinputsource",
+      "normalizeAudioInputSource": "https://hub.evenrealities.com/docs/build/device-apis#audioinputsource",
+      "BridgeEvent": "https://hub.evenrealities.com/docs/build/device-apis#os-event-models",
+      "createDefaultEvenHubEvent": "https://hub.evenrealities.com/docs/build/device-apis#handling-events",
+      "DeviceModel": "https://hub.evenrealities.com/docs/build/device-apis#device-info",
+      "EvenAppMessageType": "https://hub.evenrealities.com/docs/get-started/architecture",
+      "EvenAppMethod": "https://hub.evenrealities.com/docs/build/page-lifecycle#methods",
+      "EvenHubContainerKind": "https://hub.evenrealities.com/docs/build/display#containers",
+      "EvenHubContainerRef": "https://hub.evenrealities.com/docs/build/display#containers",
+      "EvenHubErrorCode": "https://hub.evenrealities.com/docs/reference/glossary",
+      "evenHubEventFromJson": "https://hub.evenrealities.com/docs/build/device-apis#handling-events",
+      "EvenHubEventPayload": "https://hub.evenrealities.com/docs/build/device-apis#handling-events",
+      "EvenHubPageContainerLike": "https://hub.evenrealities.com/docs/build/display#containers",
+      "EvenHubPageContainerValidationErrorCode": "https://hub.evenrealities.com/docs/build/display#stacking-order-zorderindex",
+      "EvenHubPageContainerValidationResult": "https://hub.evenrealities.com/docs/build/display#stacking-order-zorderindex",
+      "formatEvenHubPageContainerValidationError": "https://hub.evenrealities.com/docs/build/display#stacking-order-zorderindex",
+      "EventSourceType": "https://hub.evenrealities.com/docs/build/device-apis#inputs",
+      "ImageRawDataUpdate": "https://hub.evenrealities.com/docs/build/display#image-containers",
+      "ImageRawDataUpdateFields": "https://hub.evenrealities.com/docs/build/display#image-containers",
+      "IMU_Report_Data": "https://hub.evenrealities.com/docs/build/device-apis#imu-data-shape",
+      "ImuCtrlCmd": "https://hub.evenrealities.com/docs/build/device-apis#imucontrol-isopen-reportfrq",
+      "ImuCtrlCmdResponse": "https://hub.evenrealities.com/docs/build/device-apis#imucontrol-isopen-reportfrq",
+      "LAUNCH_SOURCE_APP_MENU": "https://hub.evenrealities.com/docs/build/background-lifecycle",
+      "LAUNCH_SOURCE_GLASSES_MENU": "https://hub.evenrealities.com/docs/build/background-lifecycle",
+      "List_ItemEvent": "https://hub.evenrealities.com/docs/build/device-apis#event-routing",
+      "Sys_ItemEvent": "https://hub.evenrealities.com/docs/build/device-apis#os-event-models",
+      "Text_ItemEvent": "https://hub.evenrealities.com/docs/build/device-apis#event-routing",
+      "TextContainerUpgrade": "https://hub.evenrealities.com/docs/build/display#in-place-updates"
+    },
+
+    "byMember": {
+      "createStartUpPageContainer": "https://hub.evenrealities.com/docs/build/page-lifecycle#methods",
+      "rebuildPageContainer": "https://hub.evenrealities.com/docs/build/page-lifecycle#methods",
+      "shutDownPageContainer": "https://hub.evenrealities.com/docs/build/page-lifecycle#methods",
+      "callEvenApp": "https://hub.evenrealities.com/docs/build/page-lifecycle#methods",
+      "textContainerUpgrade": "https://hub.evenrealities.com/docs/build/display#in-place-updates",
+      "updateImageRawData": "https://hub.evenrealities.com/docs/build/display#image-containers",
+
+      "onEvenHubEvent": "https://hub.evenrealities.com/docs/build/device-apis#handling-events",
+      "audioControl": "https://hub.evenrealities.com/docs/build/device-apis#audio",
+      "imuControl": "https://hub.evenrealities.com/docs/build/device-apis#imucontrol-isopen-reportfrq",
+
+      "getAppLocation": "https://hub.evenrealities.com/docs/build/device-apis#one-shot",
+      "startAppLocationUpdates": "https://hub.evenrealities.com/docs/build/device-apis#continuous",
+      "stopAppLocationUpdates": "https://hub.evenrealities.com/docs/build/device-apis#continuous",
+      "onAppLocationChanged": "https://hub.evenrealities.com/docs/build/device-apis#continuous",
+
+      "pickImageFromAlbum": "https://hub.evenrealities.com/docs/build/device-apis#photos",
+      "captureImageFromCamera": "https://hub.evenrealities.com/docs/build/device-apis#photos",
+
+      "getDeviceInfo": "https://hub.evenrealities.com/docs/build/device-apis#device-info",
+      "onDeviceStatusChanged": "https://hub.evenrealities.com/docs/build/device-apis#device-info",
+      "getUserInfo": "https://hub.evenrealities.com/docs/build/device-apis#user-info",
+
+      "setLocalStorage": "https://hub.evenrealities.com/docs/build/device-apis#local-storage",
+      "getLocalStorage": "https://hub.evenrealities.com/docs/build/device-apis#local-storage",
+
+      "onLaunchSource": "https://hub.evenrealities.com/docs/build/background-lifecycle",
+      "setBackgroundState": "https://hub.evenrealities.com/docs/build/background-lifecycle",
+      "onBackgroundRestore": "https://hub.evenrealities.com/docs/build/background-lifecycle"
+    },
+
+    "pageLabels": {
+      "https://hub.evenrealities.com/docs": "Docs home",
+      "https://hub.evenrealities.com/docs/get-started/quickstart/first-app": "Your First App",
+      "https://hub.evenrealities.com/docs/build/page-lifecycle": "Page Lifecycle",
+      "https://hub.evenrealities.com/docs/build/display": "Display & UI System",
+      "https://hub.evenrealities.com/docs/build/device-apis": "Device APIs",
+      "https://hub.evenrealities.com/docs/build/background-lifecycle": "Background & Lifecycle",
+      "https://hub.evenrealities.com/docs/build/networking": "Networking",
+      "https://hub.evenrealities.com/docs/reference/glossary": "Glossary",
+      "https://hub.evenrealities.com/docs/ship/packaging": "Packaging & Deployment",
+      "https://www.npmjs.com/package/@evenrealities/even_hub_sdk": "SDK on npm"
+    }
   }
 }

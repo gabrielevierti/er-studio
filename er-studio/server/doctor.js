@@ -424,7 +424,7 @@ const CHECKS = [
           status: 'fail',
           message: 'evenhub-simulator is not installed',
           detail: `${entry.reason}. RUN starts the dev server and then stops: there is no simulator to launch, so the glasses mirror stays dark.`,
-          fix: { text: 'Install the Even Hub tooling globally.', command: INSTALL_TOOLING, url: DOCS.tools }
+          fix: { text: 'Install the Even Hub tooling globally.', command: INSTALL_TOOLING, url: DOCS.tools, auto: true }
         };
       }
 
@@ -433,7 +433,7 @@ const CHECKS = [
           status: 'fail',
           message: `evenhub-simulator ${entry.version} is too old - needs ${SIM_AUTOMATION_MIN}+`,
           detail: `The live mirror, the TouchBar pad, the simulator console and every metric are built on the HTTP automation control plane, which arrived in ${SIM_AUTOMATION_MIN}. On ${entry.version} the simulator launches but ER Studio can see nothing inside it.`,
-          fix: { text: 'Upgrade the simulator.', command: 'npm i -g @evenrealities/evenhub-simulator@latest', url: DOCS.simulator }
+          fix: { text: 'Upgrade the simulator.', command: 'npm i -g @evenrealities/evenhub-simulator@latest', url: DOCS.simulator, auto: true }
         };
       }
 
@@ -442,7 +442,7 @@ const CHECKS = [
           status: 'warn',
           message: `evenhub-simulator ${entry.version} - resolved from the npx cache`,
           detail: 'This works. It just costs a cold start on every first RUN, and npx may quietly pick a different version than you expect.',
-          fix: { text: 'Install it globally to make RUN start immediately.', command: INSTALL_TOOLING, url: DOCS.tools }
+          fix: { text: 'Install it globally to make RUN start immediately.', command: INSTALL_TOOLING, url: DOCS.tools, auto: true }
         };
       }
 
@@ -544,7 +544,7 @@ const CHECKS = [
           status: 'warn',
           message: 'evenhub-cli is not installed',
           detail: 'Only PACK needs it. ER Studio falls back to "npx -y @evenrealities/evenhub-cli", so packaging still works - it just downloads the CLI the first time you press PACK.',
-          fix: { text: 'Install it globally for instant, offline packaging.', command: INSTALL_TOOLING, url: DOCS.cli }
+          fix: { text: 'Install it globally for instant, offline packaging.', command: INSTALL_TOOLING, url: DOCS.cli, auto: true }
         };
       }
 
@@ -670,7 +670,7 @@ const CHECKS = [
           status: 'fail',
           message: 'The configured workspace is not the one in use',
           detail: `Config asks for ${cfg.workspace}; ER Studio is using ${ctx.workspace}. The configured path did not exist at startup, so it was not used.`,
-          fix: { text: 'Correct the path in ~/.er-studio.json, or create the folder, then restart ER Studio.', command: `mkdir -p "${cfg.workspace}"` }
+          fix: { text: 'Correct the path in ~/.er-studio.json, or create the folder, then restart ER Studio.', command: `mkdir -p "${cfg.workspace}"`, auto: true }
         };
       }
 
@@ -688,7 +688,7 @@ const CHECKS = [
           status: 'fail',
           message: 'The workspace folder does not exist',
           detail: ctx.workspace,
-          fix: { text: 'Create it and restart ER Studio.', command: `mkdir -p "${ctx.workspace}"` }
+          fix: { text: 'Create it and restart ER Studio.', command: `mkdir -p "${ctx.workspace}"`, auto: true }
         };
       }
       try {
@@ -806,7 +806,7 @@ const CHECKS = [
           status: 'fail',
           message: 'No "dev" script',
           detail: 'RUN executes `npm run dev` and reads the Vite URL from its output. Without that script the session dies immediately and the simulator never launches.',
-          fix: { text: 'Add a dev script (Vite projects use `vite`).', command: 'npm pkg set scripts.dev="vite"', url: DOCS.templates }
+          fix: { text: 'Add a dev script (Vite projects use `vite`).', command: `cd "${ctx.projectDir}" && npm pkg set scripts.dev="vite"`, url: DOCS.templates, auto: true }
         };
       }
       if (!scripts.build) {
@@ -814,7 +814,7 @@ const CHECKS = [
           status: 'warn',
           message: 'No "build" script',
           detail: 'RUN is fine. PACK runs `npm run build` before `evenhub pack`, so packaging will fail at the first step.',
-          fix: { text: 'Add a build script.', command: 'npm pkg set scripts.build="vite build"', url: DOCS.packaging }
+          fix: { text: 'Add a build script.', command: `cd "${ctx.projectDir}" && npm pkg set scripts.build="vite build"`, url: DOCS.packaging, auto: true }
         };
       }
       return { status: 'pass', message: `${pkg.name || ctx.project} - dev and build scripts present` };
@@ -888,7 +888,7 @@ const CHECKS = [
           status: 'fail',
           message: 'node_modules is missing or empty',
           detail: 'RUN will fail as soon as Vite is invoked. This is normal right after cloning a project that was not scaffolded through NEW.',
-          fix: { text: 'Install the dependencies.', command: `cd "${ctx.projectDir}" && npm install` }
+          fix: { text: 'Install the dependencies.', command: `cd "${ctx.projectDir}" && npm install`, auto: true }
         };
       }
       return { status: 'pass', message: `${count} package${count === 1 ? '' : 's'} installed` };
@@ -910,7 +910,7 @@ const CHECKS = [
           status: 'warn',
           message: 'This project does not depend on the Even Hub SDK',
           detail: 'Fine for a plain web page, but nothing will render on the glasses without it.',
-          fix: { text: 'Add the SDK.', command: `cd "${ctx.projectDir}" && npm i ${PROJECT_PACKAGE}`, url: DOCS.tools }
+          fix: { text: 'Add the SDK.', command: `cd "${ctx.projectDir}" && npm i ${PROJECT_PACKAGE}`, url: DOCS.tools, auto: true }
         };
       }
       if (sdk.declared && !sdk.found) {
@@ -918,7 +918,7 @@ const CHECKS = [
           status: 'fail',
           message: `SDK ${sdk.declared} is declared but not installed`,
           detail: 'Imports resolve to nothing and Vite fails at the first import of the SDK.',
-          fix: { text: 'Install it.', command: `cd "${ctx.projectDir}" && npm install` }
+          fix: { text: 'Install it.', command: `cd "${ctx.projectDir}" && npm install`, auto: true }
         };
       }
       if (sdk.satisfies === false) {
@@ -926,7 +926,7 @@ const CHECKS = [
           status: 'warn',
           message: `SDK ${sdk.version} does not satisfy ${sdk.declared}`,
           detail: 'npm would not have chosen this version for that range, so it was almost certainly installed by hand or left behind by an edit to package.json.',
-          fix: { text: 'Reinstall to bring it in line.', command: `cd "${ctx.projectDir}" && npm install` }
+          fix: { text: 'Reinstall to bring it in line.', command: `cd "${ctx.projectDir}" && npm install`, auto: true }
         };
       }
 
@@ -966,7 +966,8 @@ const CHECKS = [
           fix: {
             text: 'Install the latest release, which also rewrites the range in package.json.',
             command: installLatest,
-            url: DOCS.sdkChangelog
+            url: DOCS.sdkChangelog,
+            auto: 'confirm'
           }
         };
       }
@@ -1000,7 +1001,7 @@ const CHECKS = [
           status: 'warn',
           message: 'No app.json',
           detail: 'RUN does not need it. PACK does - it is the first argument to `evenhub pack`, and without it you cannot produce an .ehpk or submit anything.',
-          fix: { text: 'Generate a starter manifest in the project folder.', command: `cd "${ctx.projectDir}" && npx -y @evenrealities/evenhub-cli init`, url: DOCS.packaging }
+          fix: { text: 'Generate a starter manifest in the project folder.', command: `cd "${ctx.projectDir}" && npx -y @evenrealities/evenhub-cli init`, url: DOCS.packaging, auto: true }
         };
       }
 
@@ -1108,19 +1109,58 @@ async function runChecks(ctx, only = []) {
   };
 }
 
+/* ---------------- auto-fix resolution ----------------
+   A fix is only ever run automatically when the check that produced it marked
+   it `auto: true`. That flag means: idempotent, reversible, scoped to the npm
+   prefix or the selected project, and safe to run without reading first.
+   Everything else - permission changes, quarantine flags, version bumps that
+   rewrite a range mid-project, anything that stops a running process - stays
+   MANUAL and is only ever copied to the clipboard.                          */
+
+function isAutoFix(check) {
+  return !!(check.fix && (check.fix.auto === true || check.fix.auto === 'confirm') && check.fix.command &&
+            check.status !== 'pass' && check.status !== 'skip');
+}
+
+// Same containment rule as files.js and sdk.js: a project name is client input.
+function resolveProjectDir(workspace, name) {
+  if (!name) return null;
+  const abs = path.resolve(workspace, name);
+  const rootWithSep = workspace.endsWith(path.sep) ? workspace : workspace + path.sep;
+  if (abs !== workspace && !abs.startsWith(rootWithSep)) return null;
+  return fs.existsSync(abs) ? abs : null;
+}
+
+// The UI posts check *ids*, never commands. We re-run those checks here and
+// take the commands from the fresh result, so a stale panel cannot run a fix
+// for a problem that has since been solved, and nothing the client sends can
+// widen into arbitrary shell.
+async function resolveAutoFixes(base, ids, project) {
+  const only = (Array.isArray(ids) ? ids : [])
+    .map(String)
+    .filter(id => CHECKS.some(c => c.id === id));
+
+  if (!only.length) return { commands: [], checks: [], report: null };
+
+  const report = await runChecks({
+    ...base,
+    project: project || null,
+    projectDir: resolveProjectDir(base.workspace, project),
+    running: base.procman ? base.procman.publicState().running : false
+  }, only);
+
+  const runnable = report.checks.filter(isAutoFix);
+  // Two checks often propose the same install line; run it once.
+  const commands = [...new Set(runnable.map(c => c.fix.command))];
+  return { commands, checks: runnable, report };
+}
+
 /* ---------------- router ---------------- */
 
 function createDoctorRouter(base) {
   const router = express.Router();
 
-  // Same containment rule as files.js and sdk.js: a project name is client input.
-  function projectDir(name) {
-    if (!name) return null;
-    const abs = path.resolve(base.workspace, name);
-    const rootWithSep = base.workspace.endsWith(path.sep) ? base.workspace : base.workspace + path.sep;
-    if (abs !== base.workspace && !abs.startsWith(rootWithSep)) return null;
-    return fs.existsSync(abs) ? abs : null;
-  }
+  const projectDir = name => resolveProjectDir(base.workspace, name);
 
   // GET /api/doctor?project=<name>&only=<id,id>
   router.get('/', async (req, res) => {
@@ -1153,4 +1193,7 @@ function createDoctorRouter(base) {
   return router;
 }
 
-module.exports = { createDoctorRouter, runChecks, validateManifest, CHECKS };
+module.exports = {
+  createDoctorRouter, runChecks, validateManifest, CHECKS,
+  resolveAutoFixes, isAutoFix, resolveProjectDir
+};

@@ -34,9 +34,20 @@ html, body {
 body {
   display: grid;
   /* rows: topbar | main | dock splitter | dock | statusbar
-     panel sizes are CSS variables so the splitters can drive them */
-  grid-template-rows: 38px 1fr 5px var(--dock-h, 262px) 24px;
+     Panel sizes are CSS variables so the splitters can drive them, and each
+     track has its own variable so an emptied zone can collapse to nothing
+     instead of leaving a dead strip and an ownerless splitter behind. */
+  grid-template-rows:
+    38px
+    minmax(0, 1fr)
+    var(--gap-dock, 5px)
+    var(--row-dock, var(--dock-h, 262px))
+    24px;
 }
+
+body.zone-bottom-empty { --row-dock: 0px; --gap-dock: 0px; }
+body.zone-left-empty   { --col-left: 0px;  --gap-left: 0px; }
+body.zone-right-empty  { --col-right: 0px; --gap-right: 0px; }
 
 .mono { font-family: var(--mono); }
 
@@ -144,8 +155,13 @@ body.electron #topbar a {
 
 #layout {
   display: grid;
-  /* columns: explorer | splitter | editor | splitter | devices */
-  grid-template-columns: var(--sidebar-w, 236px) 5px minmax(0, 1fr) 5px var(--devices-w, 404px);
+  /* columns: left zone | splitter | editor | splitter | right zone */
+  grid-template-columns:
+    var(--col-left, var(--sidebar-w, 236px))
+    var(--gap-left, 5px)
+    minmax(0, 1fr)
+    var(--gap-right, 5px)
+    var(--col-right, var(--devices-w, 404px));
   min-height: 0;
 }
 
@@ -635,3 +651,276 @@ body.electron #topbar a {
   cursor: help;
   align-self: center;
 }
+
+
+/* ==================================================================
+   DOCK ZONES
+   A zone is a tab strip plus a stack of panels, one visible at a time.
+   Left, right and bottom are the same component - only the grid slot
+   differs - which is what makes a panel movable between them.
+   ================================================================== */
+
+.zone {
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.zone[hidden] { display: none; }
+#zone-bottom { border-top: 1px solid var(--border); }
+
+.zone-tabs {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-height: 29px;
+}
+.zone-tabs::-webkit-scrollbar { height: 0; }
+
+.zone-stack { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+.zone-actions { display: flex; align-items: center; flex: 1; padding-right: 6px; }
+
+.zone.drop-target { outline: 1px solid var(--accent); outline-offset: -1px; }
+.zone.drop-target > .zone-tabs { background: rgba(70, 224, 138, 0.07); }
+body.dragging-panel .zone-stack { pointer-events: none; }
+
+.dock-tab {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: 0;
+  border-right: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  padding: 7px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+.dock-tab:hover { color: var(--text); }
+.dock-tab.active { color: var(--accent); background: var(--panel); box-shadow: inset 0 -2px 0 var(--accent); }
+.dock-tab:active { cursor: grabbing; }
+
+/* ---------- per-panel toolbar ----------
+   Each panel owns its actions, so CLEAR exists only on the panels that have
+   something to clear rather than being a dock-wide button that had to guess. */
+
+.panel-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+  flex-shrink: 0;
+  min-height: 30px;
+}
+.bar-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-panel { display: none; flex: 1; min-height: 0; }
+.dock-panel.active { display: flex; flex-direction: column; }
+
+#display-scroll { flex: 1; overflow-y: auto; min-height: 0; }
+
+/* ---------- torn-off panel windows ---------- */
+
+body.float-window {
+  grid-template-rows: 30px minmax(0, 1fr);
+  overflow: hidden;
+}
+#float-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+}
+#float-bar .icon-btn, #float-bar button { -webkit-app-region: no-drag; }
+#float-title { font-size: 10px; letter-spacing: 2px; color: var(--muted); }
+#float-root { display: flex; flex-direction: column; min-height: 0; background: var(--panel); }
+#float-root > .dock-panel.active { flex: 1; min-height: 0; }
+
+.ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* ==================================================================
+   METRICS
+   ================================================================== */
+
+.metrics-scroll { flex: 1; overflow-y: auto; min-height: 0; }
+
+.metrics-section { border-bottom: 1px solid var(--border); }
+.metrics-head {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--faint);
+  padding: 10px 14px 6px;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border-top: 1px solid var(--border);
+}
+.metric {
+  background: var(--panel);
+  padding: 10px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.metric-label { font-size: 9px; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 5px; }
+.metric-value { font-size: 19px; color: var(--text); line-height: 1.15; }
+.metric-value.metric-ok { color: var(--accent); }
+.metric-value.metric-bad { color: var(--red); }
+.metric-sub {
+  font-size: 10px;
+  color: var(--faint);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Unlabelled on purpose: the number above is the answer, the line only says
+   whether it is settling or drifting. */
+.spark { width: 100%; height: 30px; margin-top: 8px; display: block; }
+
+.metrics-state {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  color: var(--muted);
+}
+.metrics-state[data-state="live"] { color: var(--accent); border-color: var(--accent-dim); }
+.metrics-state[data-state="starting"] { color: var(--amber); border-color: #4a3d1d; }
+
+.metrics-note {
+  padding: 10px 14px 16px;
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--faint);
+  max-width: 780px;
+}
+
+/* ==================================================================
+   DOCTOR: fix runner
+   ================================================================== */
+
+.btn-fix { border-color: #4a3d1d; color: var(--amber); }
+.btn-fix:hover:not(:disabled) { background: rgba(224, 179, 74, 0.08); border-color: var(--amber); }
+#btn-doctor-fix:disabled { opacity: 0.35; cursor: default; }
+
+.doctor-fix-progress { font-size: 10px; letter-spacing: 1px; color: var(--muted); }
+
+#doctor-results {
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+  padding: 8px 14px 10px;
+  flex-shrink: 0;
+}
+.fix-result-head { font-size: 11px; color: var(--text); margin-bottom: 6px; }
+.fix-result { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.fix-result code {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fix-result-tag {
+  font-size: 9px;
+  letter-spacing: 1px;
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  flex-shrink: 0;
+}
+.fix-result.ok .fix-result-tag { color: var(--accent); border-color: var(--accent-dim); }
+.fix-result.bad .fix-result-tag { color: var(--red); border-color: #4a1d1d; }
+.fix-result-dismiss { margin-top: 8px; }
+
+/* Fix preview modal - nothing runs until this has been read. */
+.modal-wide { width: 620px; max-width: 92vw; }
+.modal-lead { font-size: 12px; color: var(--text); line-height: 1.55; }
+.modal-foot { font-size: 10.5px; color: var(--faint); line-height: 1.55; }
+
+.fix-list {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.fix-row {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 8px;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.fix-row:last-child { border-bottom: 0; }
+.fix-num { color: var(--faint); font-size: 11px; text-align: right; padding-top: 1px; }
+.fix-why { font-size: 10px; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 4px; }
+.fix-cmd {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--accent);
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.doctor-runfix { color: var(--accent); border-color: var(--accent-dim); }
+.doctor-runfix:hover { background: rgba(70, 224, 138, 0.08); }
+.doctor-manual {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--faint);
+  border: 1px solid var(--border);
+  padding: 1px 4px;
+  margin-left: 6px;
+  cursor: help;
+  align-self: center;
+}
+
+/* ---------- SDK reference doc links ---------- */
+
+.ref-doclink { color: var(--blue); border-color: transparent; }
+.ref-doclink:hover { border-color: var(--border-hi); }
+/* A group-level fallback should not look like a precise answer. */
+.ref-doclink.approx { color: var(--muted); }
+.ref-member-doc {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--blue);
+  text-decoration: none;
+  margin-left: 8px;
+}
+.ref-member-doc:hover { text-decoration: underline; }
+
+/* hiddenInset draws the traffic lights over the content, so reserve the gutter. */
+body.float-window.mac-inset #float-bar { padding-left: 82px; }

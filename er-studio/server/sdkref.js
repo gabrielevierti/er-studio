@@ -140,32 +140,82 @@ function groupIndex(overlay) {
 // The generated layer wins on structure, the overlay wins on prose. Where the
 // overlay is silent the original Chinese is passed through and tagged, so the
 // UI can label it rather than pretending it is English.
+// OFFICIAL DOCS resolution.
+//
+// Even's docs have no per-symbol API page - they say the .d.ts is the
+// authoritative reference and document the API by topic. So a link is only
+// ever "the page that covers this", and the UI is told how precise the match
+// was so it can say so instead of implying a symbol page exists.
+//
+//   exact   the overlay names this symbol or member specifically
+//   topic   fell through to the group's page
+//   root    fell through to the docs home - honest last resort
+function docLinkResolver(overlay) {
+  const links = overlay.docLinks || {};
+  const bySymbol = links.bySymbol || {};
+  const byMember = links.byMember || {};
+  const byGroup = links.byGroup || {};
+  const labels = links.pageLabels || {};
+  const fallback = links.default || null;
+
+  const label = url => {
+    if (!url) return null;
+    const base = String(url).split('#')[0];
+    return labels[base] || labels[url] || null;
+  };
+
+  return {
+    forSymbol(name, group) {
+      const exact = bySymbol[name];
+      if (exact) return { url: exact, precision: 'exact', label: label(exact) };
+      const topic = byGroup[group];
+      if (topic) return { url: topic, precision: 'topic', label: label(topic) };
+      if (fallback) return { url: fallback, precision: 'root', label: label(fallback) };
+      return { url: null, precision: null, label: null };
+    },
+    // A member link is only worth rendering when it is more specific than the
+    // one already shown on the symbol - otherwise it is the same button twice.
+    forMember(ownerName, memberName) {
+      const url = byMember[`${ownerName}.${memberName}`] || byMember[memberName] || null;
+      return url ? { url, precision: 'exact', label: label(url) } : { url: null, precision: null, label: null };
+    },
+    mapped: name => !!bySymbol[name]
+  };
+}
+
 function merge(generated, overlay) {
   const groups = groupIndex(overlay);
   const entries = overlay.symbols || {};
-  const links = overlay.docLinks || {};
+  const docs = docLinkResolver(overlay);
 
   const symbols = generated.symbols.map(sym => {
     const o = entries[sym.name] || {};
     const oMembers = o.members || {};
+    const group = groups.get(sym.name) || 'other';
+    const link = docs.forSymbol(sym.name, group);
 
     return {
       ...sym,
-      group: groups.get(sym.name) || 'other',
+      group,
       summary: o.summary || sym.doc.summary || '',
       lang: o.summary ? 'en' : (sym.doc.summary ? 'zh' : null),
       original: o.summary ? sym.doc.summary || '' : '',
       notes: o.notes || [],
       example: o.example || (sym.doc.example && sym.doc.example.text) || '',
-      docUrl: (links.bySymbol && links.bySymbol[sym.name]) || links.default || null,
+      docUrl: link.url,
+      docPrecision: link.precision,
+      docLabel: link.label,
       members: sym.members.map(m => {
         const om = oMembers[m.name] || {};
+        const mLink = docs.forMember(sym.name, m.name);
         return {
           ...m,
           summary: om.summary || m.doc.summary || '',
           lang: om.summary ? 'en' : (m.doc.summary ? 'zh' : null),
           original: om.summary ? m.doc.summary || '' : '',
-          notes: om.notes || []
+          notes: om.notes || [],
+          docUrl: mLink.url && mLink.url !== link.url ? mLink.url : null,
+          docLabel: mLink.url && mLink.url !== link.url ? mLink.label : null
         };
       })
     };
@@ -192,6 +242,10 @@ function merge(generated, overlay) {
     drift: {
       orphanedOverlayEntries: orphans,
       symbolsWithoutEnglish: uncovered,
+      // Symbols with no entry in docLinks.bySymbol. They still get a working
+      // link via their group, but the mapping is worth topping up when Even
+      // adds a page - this is what tells you which ones.
+      symbolsWithoutDocLink: symbols.filter(s => s.docPrecision !== 'exact').map(s => s.name),
       unparsedExports: generated.unparsed || [],
       overlayStale: !!(overlay.sdkVersionAuthoredAgainst &&
                        generated.version &&

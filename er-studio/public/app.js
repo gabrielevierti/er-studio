@@ -8,8 +8,34 @@
 
 'use strict';
 
-const $ = sel => document.querySelector(sel);
-const $$ = sel => Array.from(document.querySelectorAll(sel));
+/* Panels can be torn off into their own OS windows (panels.js). When that
+   happens the panel's DOM moves into that window's document, so a plain
+   document.querySelector would stop finding it. Every lookup therefore walks
+   the main document first and then any detached panel documents - which is
+   what keeps the several hundred $('#...') calls below working unchanged. */
+
+const detachedDocs = new Set();
+window.__erDocs = detachedDocs;
+
+const $ = sel => {
+  const hit = document.querySelector(sel);
+  if (hit) return hit;
+  for (const doc of detachedDocs) {
+    try {
+      const found = doc.querySelector(sel);
+      if (found) return found;
+    } catch { /* window torn down mid-lookup */ }
+  }
+  return null;
+};
+
+const $$ = sel => {
+  const out = Array.from(document.querySelectorAll(sel));
+  for (const doc of detachedDocs) {
+    try { out.push(...doc.querySelectorAll(sel)); } catch { /* torn down */ }
+  }
+  return out;
+};
 
 const state = {
   workspace: null,
@@ -26,8 +52,38 @@ const state = {
   warnCount: 0,
   procLogCount: 0,
   doctorBusy: false,
-  fixBusy: false
+  fixBusy: false,
+  frames: 0
 };
+
+/* ---------------- sampled history for the metrics panel ----------------
+   One fixed-length ring per series. Sparklines read straight off these, so
+   nothing is recomputed when the panel opens and nothing is retained when it
+   is closed - the sampling already happens for the mirror either way. */
+
+const HISTORY_LEN = 120;
+const history = { fps: [], latency: [], lit: [], delta: [], rss: [] };
+
+function pushSample(series, value) {
+  const arr = history[series];
+  if (!arr || !Number.isFinite(value)) return;
+  arr.push(value);
+  if (arr.length > HISTORY_LEN) arr.shift();
+}
+
+function resetHistory() {
+  for (const key of Object.keys(history)) history[key].length = 0;
+  paintSparks();
+}
+
+// Nearest-rank, which is honest about small samples: with 8 frames recorded
+// there is no p95 worth interpolating towards.
+function percentile(values, pct) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const rank = Math.ceil((pct / 100) * sorted.length) - 1;
+  return sorted[Math.max(0, Math.min(rank, sorted.length - 1))];
+}
 
 /* ---------------- fetch version from the server ---------------- */
 
@@ -98,6 +154,13 @@ function connectWs() {
         state.workspace = msg.workspace;
         state.hasPty = msg.hasPty;
         $('#status-workspace').textContent = 'workspace: ' + msg.workspace;
+        {
+          const wsBar = $('#bar-workspace-path');
+          if (wsBar) {
+            wsBar.textContent = msg.workspace.replace(/^\/Users\/[^/]+/, '~').replace(/^\/home\/[^/]+/, '~');
+            wsBar.title = msg.workspace;
+          }
+        }
         applyStatus(msg.state);
         break;
       case 'status':
@@ -123,6 +186,7 @@ function connectWs() {
           setFixProgress('');
           const results = msg.results || [];
           const failed = results.filter(r => r.code !== 0);
+          renderFixResults(results);
           toast(
             failed.length
               ? `${failed.length} of ${results.length} fixes failed - see CONSOLE`
@@ -147,11 +211,14 @@ function connectWs() {
           toast('Job failed - see PROCESS LOG', true);
         }
         break;
-      case 'term-mode':
+      case 'term-mode': {
+        const modeBar = $('#bar-terminal-mode');
+        if (modeBar) modeBar.textContent = msg.mode === 'exec' ? 'command runner - no pty' : 'interactive shell';
         if (term && msg.mode === 'exec') {
           term.writeln('\x1b[33m' + msg.note + '\x1b[0m');
         }
         break;
+      }
       case 'term-data':
         if (term) term.write(msg.data);
         break;
@@ -193,25 +260,68 @@ function applyStatus(s) {
   // webview iframe
   const wrap = $('#webview-wrap');
   const frame = $('#webview');
+  const urlBar = $('#bar-webview-url');
   if (s.viteUrl) {
     if (frame.src !== s.viteUrl) frame.src = s.viteUrl;
     $('#btn-webview-open').href = s.viteUrl;
+    if (urlBar) urlBar.textContent = s.viteUrl;
     wrap.classList.add('live');
   } else {
     frame.src = 'about:blank';
+    $('#btn-webview-open').removeAttribute('href');
+    if (urlBar) urlBar.textContent = 'dev server offline';
     wrap.classList.remove('live');
   }
+
+  paintSessionMetrics(s);
 
   if (!wasRunning && s.running) {
     state.firstRenderAt = null;
     state.consoleSinceId = 0;
     state.errCount = 0;
     state.warnCount = 0;
+    state.frames = 0;
+    fetchTimes.length = 0;
+    resetHistory();
     updateBadges();
-    $('#m-boot').textContent = '—';
+    $('#m-boot').textContent = '\u2014';
   }
   if (wasRunning && !s.running) {
     $('#lens').classList.remove('live');
+    clearMirror();
+  }
+}
+
+/* ---------------- metrics: session block ----------------
+   Everything here comes off the status message, so it stays correct whether
+   or not the METRICS panel has ever been opened. */
+
+function paintSessionMetrics(s) {
+  const stateEl = $('#m-state');
+  if (stateEl) {
+    const mode = s.running ? (s.simAlive ? 'live' : 'starting') : 'idle';
+    stateEl.dataset.state = mode;
+    stateEl.textContent = mode.toUpperCase();
+  }
+
+  const project = $('#m-project');
+  if (project) project.textContent = s.project || 'no project';
+
+  const lensState = $('#lens-state');
+  if (lensState) lensState.textContent = s.simAlive ? 'mirroring' : (s.running ? 'waiting for simulator' : 'idle');
+
+  const vite = $('#m-vite');
+  if (vite) {
+    vite.textContent = s.vitePort ? ':' + s.vitePort : '\u2014';
+    vite.className = 'metric-value mono' + (s.viteAlive ? ' metric-ok' : '');
+    $('#m-vite-sub').textContent = s.viteAlive ? 'serving' : (s.running ? 'starting\u2026' : 'not running');
+  }
+
+  const sim = $('#m-sim');
+  if (sim) {
+    sim.textContent = s.simAlive ? ':' + s.simAutomationPort : '\u2014';
+    sim.className = 'metric-value mono' + (s.simAlive ? ' metric-ok' : '');
+    $('#m-sim-sub').textContent = s.simAlive ? 'automation API up' : (s.running ? 'not launched yet' : 'not running');
   }
 }
 
@@ -427,6 +537,13 @@ function isAutoFix(check) {
             check.status !== 'pass' && check.status !== 'skip');
 }
 
+// Runnable from its own row, but deliberately not part of RUN FIXES: the user
+// should be choosing this one specifically, not sweeping it up in a batch.
+function isRowFix(check) {
+  return !!(check.fix && (check.fix.auto === true || check.fix.auto === 'confirm') &&
+            check.fix.command && check.status !== 'pass' && check.status !== 'skip');
+}
+
 function pendingFixes() {
   return doctorReport ? doctorReport.checks.filter(isAutoFix) : [];
 }
@@ -448,7 +565,15 @@ function paintFixButton() {
   btn.title = commands.length
     ? `Run ${commands.length} command${commands.length === 1 ? '' : 's'}:\n` +
       commands.map(c => '\u00b7 ' + c).join('\n')
-    : 'Nothing can be fixed automatically right now';
+    : (() => {
+        const manual = (doctorReport ? doctorReport.checks : [])
+          .filter(c => c.fix && c.fix.command && !isAutoFix(c) &&
+                       c.status !== 'pass' && c.status !== 'skip');
+        return manual.length
+          ? `${manual.length} fix${manual.length === 1 ? '' : 'es'} need running one at a time:\n` +
+            manual.map(c => '\u00b7 ' + c.label).join('\n')
+          : 'Nothing to fix - all checks pass';
+      })();
 }
 
 // The server takes check ids, never commands: it re-runs those checks and
@@ -459,15 +584,16 @@ async function runFixes(ids) {
   if (state.fixBusy || !ids.length || !doctorReport) return;
 
   const commands = [...new Set(
-    doctorReport.checks.filter(c => ids.includes(c.id) && isAutoFix(c)).map(c => c.fix.command)
+    doctorReport.checks.filter(c => ids.includes(c.id) && isRowFix(c)).map(c => c.fix.command)
   )];
   if (!commands.length) return;
 
   // Running shell on someone's machine should never be one unlabelled click.
-  const proceed = confirm(
-    `Run ${commands.length} command${commands.length === 1 ? '' : 's'}?\n\n` +
-    commands.map(c => '  ' + c).join('\n\n') +
-    '\n\nOutput goes to the CONSOLE panel.'
+  // The modal lists every command against the check that asked for it, so the
+  // question being answered is "do I want this to happen to my machine", not
+  // "what does this button do".
+  const proceed = await confirmFixes(
+    doctorReport.checks.filter(c => ids.includes(c.id) && isAutoFix(c))
   );
   if (!proceed) return;
 
@@ -493,6 +619,117 @@ async function runFixes(ids) {
     paintFixButton();
     toast(e.message, true);
   }
+}
+
+/* ---------------- doctor: fix preview and outcome ---------------- */
+
+// Resolves true only when the user reads the list and accepts it.
+function confirmFixes(checks) {
+  return new Promise(resolve => {
+    const modal = $('#modal-fixes');
+    const list = $('#fx-list');
+    if (!modal || !list) return resolve(false);
+
+    // Two checks often propose the same install line; it runs once, so show
+    // it once, with every check that wanted it.
+    const byCommand = new Map();
+    for (const check of checks) {
+      if (!byCommand.has(check.fix.command)) byCommand.set(check.fix.command, []);
+      byCommand.get(check.fix.command).push(check);
+    }
+
+    const n = byCommand.size;
+    $('#fx-lead').textContent =
+      `${n} command${n === 1 ? '' : 's'} will run on your machine, in order. ` +
+      'A command that fails does not stop the ones after it.';
+
+    list.innerHTML = '';
+    let index = 0;
+    for (const [command, owners] of byCommand) {
+      const row = document.createElement('div');
+      row.className = 'fix-row';
+
+      const num = document.createElement('span');
+      num.className = 'fix-num mono';
+      num.textContent = String(++index);
+
+      const body = document.createElement('div');
+
+      const why = document.createElement('div');
+      why.className = 'fix-why';
+      why.textContent = owners.map(o => o.label).join(' \u00b7 ');
+
+      const code = document.createElement('code');
+      code.className = 'fix-cmd';
+      code.textContent = command;
+
+      body.append(why, code);
+      row.append(num, body);
+      list.appendChild(row);
+    }
+
+    const ok = $('#fx-run');
+    const cancel = $('#fx-cancel');
+
+    const done = answer => {
+      modal.hidden = true;
+      ok.removeEventListener('click', onOk);
+      cancel.removeEventListener('click', onCancel);
+      document.removeEventListener('keydown', onKey);
+      resolve(answer);
+    };
+    const onOk = () => done(true);
+    const onCancel = () => done(false);
+    const onKey = ev => {
+      if (ev.key === 'Escape') done(false);
+      if (ev.key === 'Enter') done(true);
+    };
+
+    ok.addEventListener('click', onOk);
+    cancel.addEventListener('click', onCancel);
+    document.addEventListener('keydown', onKey);
+
+    modal.hidden = false;
+    ok.focus();
+  });
+}
+
+// A toast disappears; which command failed is worth keeping on screen until
+// the next run replaces it.
+function renderFixResults(results) {
+  const host = $('#doctor-results');
+  if (!host) return;
+  host.innerHTML = '';
+
+  if (!results.length) { host.hidden = true; return; }
+
+  const failed = results.filter(r => r.code !== 0);
+  const head = document.createElement('div');
+  head.className = 'fix-result-head';
+  head.textContent = failed.length
+    ? `${results.length - failed.length} of ${results.length} fixes applied, ${failed.length} failed - full output in CONSOLE`
+    : `${results.length} fix${results.length === 1 ? '' : 'es'} applied`;
+  host.appendChild(head);
+
+  for (const r of results) {
+    const row = document.createElement('div');
+    row.className = 'fix-result' + (r.code === 0 ? ' ok' : ' bad');
+    const tag = document.createElement('span');
+    tag.className = 'fix-result-tag mono';
+    tag.textContent = r.code === 0 ? 'OK' : 'FAIL';
+    const code = document.createElement('code');
+    code.textContent = r.command;
+    row.append(tag, code);
+    host.appendChild(row);
+  }
+
+  const dismiss = document.createElement('button');
+  dismiss.className = 'icon-btn fix-result-dismiss';
+  dismiss.textContent = 'DISMISS';
+  dismiss.addEventListener('click', () => { host.hidden = true; });
+  host.appendChild(dismiss);
+
+  host.hidden = false;
 }
 
 function renderDoctor(report) {
@@ -595,7 +832,7 @@ function buildDoctorRow(check) {
       });
       cmdWrap.append(code, copy);
 
-      if (isAutoFix(check)) {
+      if (isRowFix(check)) {
         const run = document.createElement('button');
         run.className = 'doctor-rerun doctor-runfix';
         run.textContent = 'RUN';
@@ -1047,6 +1284,7 @@ const canvas = $('#glasses-canvas');
 const ctx2d = canvas.getContext('2d', { willReadFrequently: true });
 let prevFrame = null;
 let frameTimes = [];
+const fetchTimes = [];
 let mirrorBusy = false;
 let lastAnalysis = 0;
 
@@ -1067,10 +1305,20 @@ async function mirrorTick() {
     const now = performance.now();
     frameTimes.push(now);
     frameTimes = frameTimes.filter(t => now - t < 3000);
-    const fps = (frameTimes.length / 3).toFixed(1);
-    $('#lens-fps').textContent = fps + ' FPS';
-    $('#m-fps').textContent = fps + ' fps';
-    $('#m-latency').textContent = (now - t0).toFixed(0) + ' ms/frame fetch';
+    const fps = frameTimes.length / 3;
+    state.frames++;
+
+    const fetchMs = now - t0;
+    fetchTimes.push(fetchMs);
+    if (fetchTimes.length > HISTORY_LEN) fetchTimes.shift();
+
+    $('#lens-fps').textContent = fps.toFixed(1) + ' FPS';
+    $('#m-fps').textContent = fps.toFixed(1) + ' fps';
+    $('#m-fps-sub').textContent = state.frames.toLocaleString() + ' frames this session';
+    $('#m-latency').textContent =
+      percentile(fetchTimes, 50).toFixed(0) + ' / ' + percentile(fetchTimes, 95).toFixed(0) + ' ms';
+    pushSample('fps', fps);
+    pushSample('latency', fetchMs);
 
     // Pixel analysis is expensive (165k px) - run it at 2 Hz, not per frame.
     if (now - lastAnalysis > 500) {
@@ -1084,9 +1332,14 @@ async function mirrorTick() {
         if (prevFrame) { if (on !== (prevFrame[i] > 0)) delta++; }
       }
       prevFrame = d;
+      const pct = (lit / (576 * 288)) * 100;
       $('#m-lit').textContent = lit.toLocaleString();
-      $('#m-lit-pct').textContent = ((lit / (576 * 288)) * 100).toFixed(1) + '% of framebuffer';
+      $('#m-lit-pct').textContent = pct.toFixed(1) + '% of 165,888 px framebuffer';
       $('#m-delta').textContent = delta.toLocaleString();
+      $('#m-delta-sub').textContent = delta === 0 ? 'static frame' : 'px changed vs previous sample';
+      pushSample('lit', pct);
+      pushSample('delta', delta);
+      paintSparks();
 
       if (!state.firstRenderAt && lit > 100 && state.simStartedAt) {
         state.firstRenderAt = Date.now();
@@ -1101,6 +1354,27 @@ async function mirrorTick() {
     mirrorBusy = false;
   }
 }
+
+// Removing .live only reveals the offline overlay, which is a near-transparent
+// hatch - the last frame stays visible through it. The framebuffer is gone the
+// moment the simulator is, so clear it rather than leave a dead frame that
+// looks live.
+function clearMirror() {
+  try { ctx2d.clearRect(0, 0, canvas.width, canvas.height); } catch { /* not ready yet */ }
+  prevFrame = null;
+  frameTimes = [];
+  fetchTimes.length = 0;
+
+  const fps = $('#lens-fps');
+  if (fps) fps.textContent = '0.0 FPS';
+  for (const [sel, value] of [['#m-fps', '—'], ['#m-latency', '—'], ['#m-lit', '—'], ['#m-delta', '—']]) {
+    const el = $(sel);
+    if (el) el.textContent = value;
+  }
+  const pct = $('#m-lit-pct');
+  if (pct) pct.textContent = 'of 165,888 px framebuffer';
+}
+
 // Continuous loop: 15ms tick + busy guard means the next frame is requested
 // as soon as the previous one lands - throughput tracks the sim endpoint.
 setInterval(mirrorTick, 15);
@@ -1152,10 +1426,82 @@ async function consoleTick() {
 }
 setInterval(consoleTick, 500);
 
+// Tab badges are rebuilt whenever the layout changes, so this is called both
+// on new data and on re-render rather than only when a counter moves.
 function updateBadges() {
-  $('#badge-console').textContent = state.errCount > 0 ? String(state.errCount) : '';
-  $('#m-errors').textContent = String(state.errCount);
-  $('#m-warns').textContent = state.warnCount + ' warnings';
+  const console_ = $('#badge-console');
+  if (console_) console_.textContent = state.errCount > 0 ? String(state.errCount) : '';
+
+  const proc = $('#badge-process');
+  if (proc) proc.textContent = state.procLogCount > 0 ? (state.procLogCount > 99 ? '99+' : String(state.procLogCount)) : '';
+
+  const errors = $('#m-errors');
+  if (errors) {
+    errors.textContent = String(state.errCount);
+    errors.className = 'metric-value mono' + (state.errCount > 0 ? ' metric-bad' : '');
+  }
+  const warns = $('#m-warns');
+  if (warns) warns.textContent = state.warnCount + ' warning' + (state.warnCount === 1 ? '' : 's');
+}
+
+/* ---------------- sparklines ----------------
+   Deliberately unlabelled and only ~30px tall: the number above is the
+   answer, the line is only there to say whether it is settling or drifting. */
+
+function drawSpark(canvas, values, colour) {
+  const box = canvas.getBoundingClientRect();
+  const width = Math.max(40, Math.round(box.width));
+  const height = Math.max(18, Math.round(box.height));
+  const dpr = window.devicePixelRatio || 1;
+
+  if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+  }
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  if (values.length < 2) return;
+
+  const max = Math.max(...values, 0.0001);
+  const min = Math.min(...values, 0);
+  const span = (max - min) || 1;
+  const step = width / (HISTORY_LEN - 1);
+  const offset = width - (values.length - 1) * step;   // newest sample on the right
+
+  ctx.beginPath();
+  values.forEach((v, i) => {
+    const x = offset + i * step;
+    const y = height - 1 - ((v - min) / span) * (height - 2);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = colour;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.lineTo(offset + (values.length - 1) * step, height);
+  ctx.lineTo(offset, height);
+  ctx.closePath();
+  ctx.fillStyle = colour.replace('rgb', 'rgba').replace(')', ', 0.13)');
+  ctx.fill();
+}
+
+const SPARK_COLOURS = {
+  fps: 'rgb(70, 224, 138)',
+  latency: 'rgb(224, 179, 74)',
+  lit: 'rgb(90, 162, 224)',
+  delta: 'rgb(90, 162, 224)',
+  rss: 'rgb(93, 107, 129)'
+};
+
+function paintSparks() {
+  for (const canvas of $$('.spark')) {
+    const series = canvas.dataset.spark;
+    if (!history[series]) continue;
+    try { drawSpark(canvas, history[series], SPARK_COLOURS[series] || 'rgb(120,140,160)'); }
+    catch { /* zero-size canvas while the panel is hidden */ }
+  }
 }
 
 /* ---------------- process log ---------------- */
@@ -1175,38 +1521,104 @@ function appendProcLog(source, line, ts) {
   while (host.children.length > 3000) host.removeChild(host.firstChild);
   if (stick) host.scrollTop = host.scrollHeight;
 
-  state.procLogCount++;
-  if (!$('#dock-process').classList.contains('active')) {
-    $('#badge-process').textContent = state.procLogCount > 99 ? '99+' : String(state.procLogCount);
+  state.procLines = (state.procLines || 0) + 1;
+  const total = $('#m-proclines');
+  if (total) total.textContent = state.procLines.toLocaleString();
+
+  const panel = $('#dock-process');
+  if (!panel || !panel.classList.contains('active')) {
+    state.procLogCount++;
+    updateBadges();
   }
 }
 
 /* ---------------- dock ---------------- */
 
-$$('.dock-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    $$('.dock-tab').forEach(t => t.classList.remove('active'));
-    $$('.dock-panel').forEach(p => p.classList.remove('active'));
-    tab.classList.add('active');
-    $('#dock-' + tab.dataset.dock).classList.add('active');
-    if (tab.dataset.dock === 'process') { state.procLogCount = 0; $('#badge-process').textContent = ''; }
-    if (tab.dataset.dock === 'terminal' && fitAddon) fitAddon.fit();
-    // Opening the panel is itself a request for a report.
-    if (tab.dataset.dock === 'doctor' && !doctorReport && !state.doctorBusy) runDoctor();
-  });
-});
+/* ---------------- panels ----------------
+   panels.js owns where each panel lives and which one is on top; it announces
+   what it did and this reacts. CLEAR is no longer a single dock-wide button
+   that had to guess what the active tab was: each panel that can be cleared
+   carries its own, so on METRICS, DOCTOR and REFERENCE the action simply does
+   not exist. */
 
-$('#btn-dock-clear').addEventListener('click', () => {
-  const active = $('.dock-panel.active');
-  if (active.id === 'dock-terminal' && term) term.clear();
-  if (active.id === 'dock-process') { $('#process-log').innerHTML = ''; }
-  if (active.id === 'dock-glasses-console') {
-    $('#glasses-log').innerHTML = '';
-    api('/api/sim/console', { method: 'DELETE' }).catch(() => {});
-    state.errCount = 0; state.warnCount = 0;
+function clearPanel(which) {
+  if (which === 'terminal' && term) term.clear();
+
+  if (which === 'process') {
+    $('#process-log').innerHTML = '';
+    state.procLines = 0;
+    state.procLogCount = 0;
+    const total = $('#m-proclines');
+    if (total) total.textContent = '0';
     updateBadges();
   }
+
+  if (which === 'glasses-console') {
+    $('#glasses-log').innerHTML = '';
+    api('/api/sim/console', { method: 'DELETE' }).catch(() => {});
+    state.errCount = 0;
+    state.warnCount = 0;
+    updateBadges();
+  }
+}
+
+// Bound once, while every panel is still in this document. The listeners ride
+// along with the node when a panel is torn off into its own window.
+$$('.panel-clear').forEach(btn => {
+  btn.addEventListener('click', () => clearPanel(btn.dataset.clear));
 });
+
+window.addEventListener('panel:activate', ev => {
+  const id = ev.detail.panel;
+  if (id === 'process') { state.procLogCount = 0; updateBadges(); }
+  if (id === 'terminal' && fitAddon) setTimeout(() => { try { fitAddon.fit(); } catch { /* not laid out yet */ } }, 0);
+  // Opening the panel is itself a request for a report.
+  if (id === 'doctor' && !doctorReport && !state.doctorBusy) runDoctor();
+  if (id === 'metrics') paintSparks();
+});
+
+window.addEventListener('panel:moved', ev => {
+  const id = ev.detail.panel;
+
+  if (id === 'terminal') {
+    // xterm measures against the document it is in, so it needs a beat and a
+    // refit after crossing into (or out of) a panel window.
+    setTimeout(() => {
+      try {
+        if (fitAddon) fitAddon.fit();
+        if (term) term.refresh(0, term.rows - 1);
+      } catch { /* mid-move */ }
+    }, 40);
+  }
+
+  if (id === 'webview') {
+    // Moving an iframe between documents tears down its browsing context, so
+    // the src has to be set again or the panel comes back blank.
+    const frame = $('#webview');
+    if (frame && state.viteUrl) frame.src = state.viteUrl;
+  }
+
+  if (id === 'metrics') setTimeout(paintSparks, 40);
+});
+
+// Tabs are rebuilt whenever the layout changes, and the badges live on them.
+window.addEventListener('panels:rendered', () => {
+  updateBadges();
+  if (doctorReport) paintDoctorSummary();
+});
+
+const resetMetrics = $('#btn-metrics-reset');
+if (resetMetrics) {
+  resetMetrics.addEventListener('click', () => {
+    resetHistory();
+    fetchTimes.length = 0;
+    state.frames = 0;
+    state.procLines = 0;
+    const total = $('#m-proclines');
+    if (total) total.textContent = '0';
+    toast('Metrics history cleared');
+  });
+}
 
 /* ---------------- terminal ---------------- */
 
@@ -1232,25 +1644,48 @@ function initTerminal() {
   term.onResize(({ cols, rows }) => {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'term-resize', cols, rows }));
   });
-  window.addEventListener('resize', () => fitAddon.fit());
+  window.addEventListener('resize', () => {
+    try { fitAddon.fit(); } catch { /* not laid out */ }
+    paintSparks();
+  });
 }
 
 /* ---------------- metrics timers ---------------- */
 
 setInterval(() => {
+  const uptime = $('#m-uptime');
+  const sub = $('#m-uptime-sub');
+  if (!uptime) return;
+
   if (state.running && state.startedAt) {
     const s = Math.floor((Date.now() - state.startedAt) / 1000);
-    $('#m-uptime').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    const h = Math.floor(s / 3600);
+    const body = `${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    uptime.textContent = h ? `${h}:${body}` : body;
+    if (sub) sub.textContent = 'session running';
   } else {
-    $('#m-uptime').textContent = '—';
+    uptime.textContent = '\u2014';
+    if (sub) sub.textContent = 'not running';
   }
 }, 1000);
 
 setInterval(async () => {
   try {
     const h = await api('/api/metrics/host');
-    $('#m-host').textContent = h.rssMb + ' MB';
-  } catch { /* server unreachable */ }
+
+    const rss = $('#m-host');
+    if (rss) rss.textContent = h.rssMb + ' MB';
+    const rssSub = $('#m-host-sub');
+    if (rssSub && h.heapMb != null) rssSub.textContent = `${h.heapMb} MB heap in use`;
+    pushSample('rss', h.rssMb);
+
+    const cpu = $('#m-cpu');
+    if (cpu && h.cpuPct != null) cpu.textContent = h.cpuPct.toFixed(1) + '%';
+    const cpuSub = $('#m-cpu-sub');
+    if (cpuSub && h.loadAvg1 != null) cpuSub.textContent = `load ${h.loadAvg1} across ${h.cpuCount} cores`;
+
+    paintSparks();
+  } catch { /* server unreachable - the status bar already says so */ }
 }, 5000);
 
 /* ---------------- modals ---------------- */
