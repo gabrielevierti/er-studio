@@ -6,7 +6,7 @@
 
 ![Splash](img/splash.png)
 
-Editor, file explorer, live glasses display, simulator control, console, terminal, metrics and packaging — all in one window.
+Editor, file explorer, live glasses display, simulator, console, terminal, metrics, packaging and sdk reference — all in one window.
 
 ## Why this exists
 
@@ -59,7 +59,11 @@ If you're reporting a problem, open **DOCTOR** and press **COPY REPORT** — tha
 
 ## Disclaimer
 
-ER Studio is an independent community project, built out of pure passion — I don't do this for a living. It is not affiliated with, endorsed by, or supported by Even Realities; it orchestrates their publicly published npm packages and documented APIs. All trademarks belong to their respective owners.
+ER Studio is an independent community project, built out of pure passion — I don't do this for a living. 
+It is not affiliated with, endorsed by, or supported by Even Realities; 
+it orchestrates their publicly published npm packages and documented APIs. 
+
+All trademarks belong to their respective owners.
 
 For full transparency: I do **not** currently own a pair of Even G2s — everything here was built against the official simulator and public documentation.
 
