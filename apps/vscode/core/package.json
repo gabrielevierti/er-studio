@@ -1,0 +1,25 @@
+{
+  "name": "@er-studio/core",
+  "version": "0.1.5",
+  "description": "ER Studio core - local dev server, panel UI, environment doctor and SDK reference",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "build:sdkref": "node tools/build-sdk-reference.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  },
+  "files": [
+    "server/**",
+    "public/**",
+    "data/**",
+    "index.js"
+  ],
+  "author": "Gabriele Vierti",
+  "license": "MIT"
+}

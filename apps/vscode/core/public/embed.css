@@ -1,0 +1,80 @@
+/* ER Studio - embedded panel mode
+   Loaded only by /embed. One panel fills the viewport; every piece of IDE
+   chrome the host already provides is hidden rather than removed, so app.js
+   and panels.js still find every element they expect. */
+
+body.embed {
+  margin: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* The host owns these. */
+body.embed > #topbar,
+body.embed > #layout,
+body.embed > #zone-bottom,
+body.embed > .splitter,
+body.embed > #panel-store {
+  display: none !important;
+}
+
+/* Full-bleed root the panel body is moved into. */
+body.embed #embed-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg, #080b11);
+}
+
+body.embed #embed-root > .dock-panel {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+}
+
+/* A panel's own toolbar stays - that is where CLEAR, CAPTURE and the doctor
+   controls live. The dock only adds drag affordances, and those have no
+   meaning in a view VS Code already lets you move. */
+body.embed .dock-panel[draggable] {
+  -webkit-user-drag: none;
+}
+
+/* Toasts have no dock to sit above in a 300px-wide sidebar view. */
+body.embed #toast-host {
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+}
+
+body.embed #embed-error {
+  padding: 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--fg-dim, #8fa3bf);
+}
+
+/* Light-theme hosts. The panels are designed dark; rather than restyle every
+   one, invert the page's own background layers and leave the simulator mirror
+   (which really is mono green on black) alone. */
+body.embed.theme-light {
+  --bg: #f4f6fa;
+  filter: none;
+}
+
+body.embed.theme-light #embed-root {
+  background: #f4f6fa;
+}
+
+body.embed.theme-light #embed-root > .dock-panel {
+  filter: invert(0.92) hue-rotate(180deg);
+}
+
+/* Anything that is genuinely an image or a device mirror must not be inverted
+   twice. */
+body.embed.theme-light #embed-root canvas,
+body.embed.theme-light #embed-root img,
+body.embed.theme-light #embed-root video {
+  filter: invert(1) hue-rotate(180deg);
+}

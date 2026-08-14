@@ -1,0 +1,15 @@
+# Packaging happens in a scratch copy outside this workspace (see
+# scripts/prepare-vscode-package.js), where a clean `npm install --omit=dev`
+# produces node_modules. core/ is vendored and MUST ship - do not add it here.
+
+.vscode/**
+test/**
+**/*.map
+**/.DS_Store
+node_modules/**/test/**
+node_modules/**/tests/**
+node_modules/**/*.md
+node_modules/**/.github/**
+node_modules/**/example/**
+node_modules/**/examples/**
+node_modules/.bin/**

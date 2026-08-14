@@ -1,0 +1,459 @@
+{
+  "name": "er-studio",
+  "displayName": "ER Studio",
+  "description": "Developer tools for Even Realities G2 (Even Hub) apps - simulator, environment doctor, SDK reference",
+  "version": "0.1.5",
+  "publisher": "gabrielevierti",
+  "license": "MIT",
+  "author": "Gabriele Vierti",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gabrielevierti/er-studio"
+  },
+  "bugs": {
+    "url": "https://github.com/gabrielevierti/er-studio/issues"
+  },
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#080b11",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Debuggers",
+    "Visualization"
+  ],
+  "keywords": [
+    "even realities",
+    "g2",
+    "smart glasses",
+    "even hub",
+    "wearables",
+    "ar"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "er-studio",
+          "title": "ER Studio",
+          "icon": "media/activitybar.svg"
+        }
+      ],
+      "panel": [
+        {
+          "id": "er-studio-console",
+          "title": "Console",
+          "icon": "media/activitybar.svg"
+        },
+        {
+          "id": "er-studio-sim-console",
+          "title": "Simulator Console",
+          "icon": "media/activitybar.svg"
+        },
+        {
+          "id": "er-studio-sdkref",
+          "title": "SDK Reference",
+          "icon": "media/activitybar.svg"
+        },
+        {
+          "id": "er-studio-doctor",
+          "title": "Doctor",
+          "icon": "media/activitybar.svg"
+        },
+        {
+          "id": "er-studio-metrics",
+          "title": "Metrics",
+          "icon": "media/activitybar.svg"
+        }
+      ]
+    },
+    "views": {
+      "er-studio": [
+        {
+          "id": "erStudio.controls",
+          "name": "ER Studio",
+          "icon": "media/activitybar.svg"
+        },
+        {
+          "id": "erStudio.explorer",
+          "name": "Projects",
+          "icon": "media/activitybar.svg"
+        }
+      ],
+      "er-studio-console": [
+        {
+          "type": "webview",
+          "id": "erStudio.console",
+          "name": "Console"
+        }
+      ],
+      "er-studio-sim-console": [
+        {
+          "type": "webview",
+          "id": "erStudio.simConsole",
+          "name": "Simulator Console"
+        }
+      ],
+      "er-studio-sdkref": [
+        {
+          "type": "webview",
+          "id": "erStudio.sdkref",
+          "name": "SDK Reference"
+        }
+      ],
+      "er-studio-doctor": [
+        {
+          "type": "webview",
+          "id": "erStudio.doctor",
+          "name": "Doctor"
+        }
+      ],
+      "er-studio-metrics": [
+        {
+          "type": "webview",
+          "id": "erStudio.metrics",
+          "name": "Metrics"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "erStudio.run",
+        "title": "Run (dev server + simulator)",
+        "category": "ER Studio",
+        "icon": "$(play)"
+      },
+      {
+        "command": "erStudio.stop",
+        "title": "Stop",
+        "category": "ER Studio",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "erStudio.restart",
+        "title": "Restart",
+        "category": "ER Studio",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "erStudio.pack",
+        "title": "Pack .ehpk",
+        "category": "ER Studio",
+        "icon": "$(package)"
+      },
+      {
+        "command": "erStudio.newProject",
+        "title": "New Project from Template",
+        "category": "ER Studio",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "erStudio.selectProject",
+        "title": "Select Active Project",
+        "category": "ER Studio"
+      },
+      {
+        "command": "erStudio.doctor",
+        "title": "Run Environment Doctor",
+        "category": "ER Studio",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "erStudio.doctorReport",
+        "title": "Open Doctor Report",
+        "category": "ER Studio"
+      },
+      {
+        "command": "erStudio.openReference",
+        "title": "Open SDK Reference",
+        "category": "ER Studio",
+        "icon": "$(book)"
+      },
+      {
+        "command": "erStudio.screenshot",
+        "title": "Capture Simulator Screenshot",
+        "category": "ER Studio",
+        "icon": "$(device-camera)"
+      },
+      {
+        "command": "erStudio.inputUp",
+        "title": "Simulator Input: Up",
+        "category": "ER Studio"
+      },
+      {
+        "command": "erStudio.inputDown",
+        "title": "Simulator Input: Down",
+        "category": "ER Studio"
+      },
+      {
+        "command": "erStudio.inputClick",
+        "title": "Simulator Input: Click",
+        "category": "ER Studio"
+      },
+      {
+        "command": "erStudio.inputDoubleClick",
+        "title": "Simulator Input: Double Click",
+        "category": "ER Studio"
+      },
+      {
+        "command": "erStudio.restartServer",
+        "title": "Restart Local Server",
+        "category": "ER Studio"
+      },
+      {
+        "command": "erStudio.openInBrowser",
+        "title": "Open Full UI in Browser",
+        "category": "ER Studio",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "erStudio.showLogs",
+        "title": "Show Logs",
+        "category": "ER Studio",
+        "icon": "$(output)"
+      },
+      {
+        "command": "erStudio.openWalkthrough",
+        "title": "Get Started",
+        "category": "ER Studio"
+      },
+      {
+        "command": "erStudio.openLayout",
+        "title": "Reset Layout",
+        "category": "ER Studio",
+        "icon": "$(layout)"
+      },
+      {
+        "command": "erStudio.openSimulator",
+        "title": "Open Simulator",
+        "category": "ER Studio",
+        "icon": "$(device-mobile)"
+      },
+      {
+        "command": "erStudio.openWebview",
+        "title": "Open Webview",
+        "category": "ER Studio",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "erStudio.refreshExplorer",
+        "title": "Refresh Projects",
+        "category": "ER Studio",
+        "icon": "$(refresh)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "erStudio.run",
+        "key": "ctrl+alt+r",
+        "mac": "cmd+alt+r"
+      },
+      {
+        "command": "erStudio.stop",
+        "key": "ctrl+alt+s",
+        "mac": "cmd+alt+s",
+        "when": "erStudio.running"
+      },
+      {
+        "command": "erStudio.inputUp",
+        "key": "ctrl+alt+up",
+        "mac": "cmd+alt+up",
+        "when": "erStudio.running"
+      },
+      {
+        "command": "erStudio.inputDown",
+        "key": "ctrl+alt+down",
+        "mac": "cmd+alt+down",
+        "when": "erStudio.running"
+      },
+      {
+        "command": "erStudio.inputClick",
+        "key": "ctrl+alt+enter",
+        "mac": "cmd+alt+enter",
+        "when": "erStudio.running"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "erStudio.openLayout",
+          "when": "view == erStudio.controls",
+          "group": "navigation@1"
+        },
+        {
+          "command": "erStudio.openInBrowser",
+          "when": "view == erStudio.controls",
+          "group": "1_more@1"
+        },
+        {
+          "command": "erStudio.showLogs",
+          "when": "view == erStudio.controls",
+          "group": "1_more@2"
+        },
+        {
+          "command": "erStudio.newProject",
+          "when": "view == erStudio.explorer",
+          "group": "navigation@1"
+        },
+        {
+          "command": "erStudio.refreshExplorer",
+          "when": "view == erStudio.explorer",
+          "group": "navigation@2"
+        },
+        {
+          "command": "erStudio.doctor",
+          "when": "view == erStudio.doctor",
+          "group": "navigation@1"
+        },
+        {
+          "command": "erStudio.doctorReport",
+          "when": "view == erStudio.doctor",
+          "group": "navigation@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "erStudio.inputUp",
+          "when": "erStudio.running"
+        },
+        {
+          "command": "erStudio.inputDown",
+          "when": "erStudio.running"
+        },
+        {
+          "command": "erStudio.inputClick",
+          "when": "erStudio.running"
+        },
+        {
+          "command": "erStudio.inputDoubleClick",
+          "when": "erStudio.running"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ER Studio",
+      "properties": {
+        "erStudio.workspace": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Folder where ER Studio keeps your G2 projects. Set during first-run setup, or change it here. When empty, ER Studio uses the `workspace` value in `~/.er-studio.json`, then `~/er-workspace` - the same order the server and the environment doctor use."
+        },
+        "erStudio.port": {
+          "type": "number",
+          "default": 0,
+          "description": "Port for the local ER Studio server. 0 picks a free port, which lets the desktop app run at the same time."
+        },
+        "erStudio.autoStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Start the ER Studio server when VS Code finishes loading. When off, the server starts the first time you open an ER Studio view or run a command."
+        },
+        "erStudio.doctorOnStartup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run the environment doctor once after startup and report any failures in the Problems panel."
+        },
+        "erStudio.openProjectOnStartup": {
+          "type": "boolean",
+          "default": true,
+          "description": "On the first run in a workspace, open the active project's entry file in the editor."
+        },
+        "erStudio.setupOnFirstRun": {
+          "type": "boolean",
+          "default": true,
+          "description": "On the first run in a workspace, ask where your G2 projects should live and offer to create one if the folder is empty. Nothing is created without confirmation."
+        }
+      }
+    },
+    "walkthroughs": [
+      {
+        "id": "erStudio.getStarted",
+        "title": "Build for the Even Realities G2",
+        "description": "Where everything is, and how the workflow fits together.",
+        "steps": [
+          {
+            "id": "layout",
+            "title": "The layout",
+            "description": "Simulator and Webview open as editor tabs on the right, with Run and Stop on the simulator's own toolbar. Console, Simulator Console, SDK Reference and Doctor are tabs along the bottom. Your projects tree sits in the ER Studio sidebar, under the controls - one sidebar, not two.\n\nMoved something? [Reset Layout](command:erStudio.openLayout)",
+            "media": {
+              "markdown": "media/walkthrough/layout.md"
+            }
+          },
+          {
+            "id": "project",
+            "title": "Your projects folder",
+            "description": "ER Studio keeps projects in one folder, which you chose during setup. It is the same folder the environment doctor checks.\n\n[Change it](command:workbench.action.openSettings?%22erStudio.workspace%22) or [switch project](command:erStudio.selectProject).",
+            "media": {
+              "markdown": "media/walkthrough/project.md"
+            }
+          },
+          {
+            "id": "run",
+            "title": "Run it on the simulator",
+            "description": "Starts the dev server and the simulator. The Simulator view mirrors the real 576x288 display, and the input pad drives Up, Down and Click.\n[Run](command:erStudio.run)",
+            "media": {
+              "markdown": "media/walkthrough/run.md"
+            },
+            "completionEvents": [
+              "onCommand:erStudio.run"
+            ]
+          },
+          {
+            "id": "doctor",
+            "title": "When something is missing",
+            "description": "Doctor checks the Even Hub CLI, the simulator, Node and your PATH, and fixes what it can. Findings also land in the Problems panel.\n[Run Doctor](command:erStudio.doctor)",
+            "media": {
+              "markdown": "media/walkthrough/doctor.md"
+            },
+            "completionEvents": [
+              "onCommand:erStudio.doctor"
+            ]
+          },
+          {
+            "id": "reference",
+            "title": "Look things up without leaving",
+            "description": "The SDK reference loads itself and follows your cursor: put the caret on a symbol in a .ts or .js file and the reference jumps to it. Untick \u201cfollow cursor\u201d in the panel to stop that.\n[Open SDK Reference](command:erStudio.openReference)",
+            "media": {
+              "markdown": "media/walkthrough/reference.md"
+            },
+            "completionEvents": [
+              "onCommand:erStudio.openReference"
+            ]
+          },
+          {
+            "id": "pack",
+            "title": "Package for the glasses",
+            "description": "Builds and packs a .ehpk you can side-load onto real hardware.\n[Pack .ehpk](command:erStudio.pack)",
+            "media": {
+              "markdown": "media/walkthrough/pack.md"
+            },
+            "completionEvents": [
+              "onCommand:erStudio.pack"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.0"
+  },
+  "scripts": {
+    "package": "node ../../scripts/prepare-vscode-package.js",
+    "publish": "npm run package && vsce publish --packagePath $(ls er-studio-*.vsix)",
+    "test": "node test/run.js"
+  }
+}

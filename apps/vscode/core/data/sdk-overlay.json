@@ -1,0 +1,334 @@
+{
+  "$comment": [
+    "ER Studio SDK reference overlay.",
+    "",
+    "The generated layer (parsed from the installed dist/index.d.ts) is the",
+    "truth about signatures. This file is the truth about MEANING: English",
+    "text, constraints the type system cannot express, and grouping.",
+    "",
+    "The SDK's own JSDoc is written in Chinese. Where `summary` is present",
+    "below the panel shows it INSTEAD of the original and marks the entry",
+    "EN. Where it is absent the original Chinese is shown verbatim and",
+    "marked ZH, so nothing is ever hidden or silently mistranslated.",
+    "",
+    "`notes` are hard-won facts - display constraints, ordering rules,",
+    "gotchas. Everything currently in `notes` is sourced from the SDK's own",
+    "doc comments; anything you learn on real hardware belongs here too.",
+    "",
+    "Adding a key that no longer exists in the SDK is not an error - the",
+    "doctor check reports it as orphaned when Even ships a new version."
+  ],
+
+  "schemaVersion": 1,
+  "sdkVersionAuthoredAgainst": "0.0.13",
+
+  "groups": [
+    { "id": "bridge",     "label": "BRIDGE",     "blurb": "The host <-> WebView channel. Everything reaches the glasses through here." },
+    { "id": "containers", "label": "CONTAINERS", "blurb": "Page container models. Build these, hand them to the bridge." },
+    { "id": "events",     "label": "EVENTS",     "blurb": "What the OS pushes back: taps, scrolls, IMU, audio." },
+    { "id": "device",     "label": "DEVICE",     "blurb": "Glasses and ring identity, connection state, user info." },
+    { "id": "enums",      "label": "ENUMS",      "blurb": "Protocol-aligned constants and result codes." },
+    { "id": "utils",      "label": "UTILITIES",  "blurb": "Loose-key JSON readers. Internal helpers that happen to be exported.", "collapsed": true }
+  ],
+
+  "assign": {
+    "bridge": ["EvenAppBridge", "waitForEvenAppBridge", "BridgeEvent", "EvenAppMethod", "EvenAppMessageType", "LaunchSource", "LAUNCH_SOURCE_APP_MENU", "LAUNCH_SOURCE_GLASSES_MENU"],
+    "containers": ["CreateStartUpPageContainer", "RebuildPageContainer", "ShutDownContaniner", "TextContainerProperty", "ImageContainerProperty", "ListContainerProperty", "ListItemContainerProperty", "TextContainerUpgrade", "ImageRawDataUpdate", "ImageRawDataUpdateFields", "EvenHubPageContainerLike", "EvenHubContainerKind", "EvenHubContainerRef", "validateEvenHubPageContainerZOrder", "formatEvenHubPageContainerValidationError", "EvenHubPageContainerValidationErrorCode", "EvenHubPageContainerValidationResult"],
+    "events": ["EvenHubEvent", "EvenHubEventType", "EvenHubEventPayload", "evenHubEventFromJson", "createDefaultEvenHubEvent", "List_ItemEvent", "Text_ItemEvent", "Sys_ItemEvent", "AudioEvent", "AudioEventPayload", "AudioInputSource", "OsEventTypeList", "EventSourceType", "IMU_Report_Data", "ImuCtrlCmd", "ImuCtrlCmdResponse", "ImuReportPace"],
+    "device": ["DeviceInfo", "DeviceStatus", "DeviceModel", "DeviceConnectType", "UserInfo", "AppLocation", "AppLocationOptions", "AppLocationAccuracy", "AppImageAsset", "appLocationFromJson", "appImageAssetFromJson"],
+    "enums": ["EvenHubErrorCode", "EvenHubErrorCodeName", "StartUpPageCreateResult", "ImageRawDataUpdateResult", "normalizeAudioInputSource"],
+    "utils": ["JsonRecord", "isObjectRecord", "pick", "pickLoose", "normalizeLooseKey", "toNumber", "toString", "readNumber", "readString", "toObjectRecord", "bytesToJson"]
+  },
+
+  "symbols": {
+    "EvenAppBridge": {
+      "summary": "The singleton channel between your web page and the Even App host. Every glasses operation goes through this object: you never talk to the display directly.",
+      "notes": [
+        "Singleton - use getInstance(), or await waitForEvenAppBridge() which also guarantees readiness.",
+        "Calling any method before the bridge is ready throws. Check .ready or await the helper.",
+        "The simulator implements this surface over the automation port; real hardware adds BLE latency that the simulator does not reproduce."
+      ],
+      "members": {
+        "getInstance": { "summary": "Returns the singleton, creating it if it does not exist yet." },
+        "ready": { "summary": "True once the bridge has finished initialising and is safe to call." },
+        "_ready": { "summary": "Backing field for `ready`. Prefer the getter; this is not part of the stable surface." },
+        "callEvenApp": {
+          "summary": "Generic escape hatch: invoke a host method by name. The typed wrappers below are built on this.",
+          "notes": ["Use a typed method where one exists - they normalise the response shape. Reach for this only for host methods the SDK has not wrapped yet."]
+        },
+        "getUserInfo": { "summary": "Reads the signed-in Even account's user info." },
+        "getDeviceInfo": { "summary": "Reads glasses/ring device info. Resolves null when no device is paired." },
+        "setLocalStorage": { "summary": "Writes a string value to host-side persistent storage, keyed by name." },
+        "getLocalStorage": { "summary": "Reads a previously stored string value by key." },
+        "getAppLocation": { "summary": "One-shot location read. Resolves null if the host has no fix or the coordinates fail validation." },
+        "startAppLocationUpdates": { "summary": "Begins continuous location updates; pair with onAppLocationChanged to receive them." },
+        "stopAppLocationUpdates": { "summary": "Stops continuous location updates started by startAppLocationUpdates." },
+        "pickImageFromAlbum": { "summary": "Opens the host photo picker and resolves the chosen image, or null if cancelled." },
+        "captureImageFromCamera": { "summary": "Opens the host camera and resolves the captured image, or null if cancelled." },
+        "createStartUpPageContainer": {
+          "summary": "Creates the app's initial page container on the glasses. Mandatory first render call.",
+          "notes": ["Must be called once when a custom app launches. Every later layout change goes through rebuildPageContainer instead."]
+        },
+        "rebuildPageContainer": { "summary": "Replaces the current page layout. This is the normal per-frame update path after startup." },
+        "updateImageRawData": { "summary": "Pushes raw image bytes into an existing image container without rebuilding the page." },
+        "textContainerUpgrade": { "summary": "Updates the contents of an existing text container in place." },
+        "audioControl": { "summary": "Opens or closes the microphone stream, optionally selecting glasses or phone as the source." },
+        "imuControl": { "summary": "Enables or disables IMU reporting and sets the report rate." },
+        "shutDownPageContainer": { "summary": "Tears down the page container and exits. exitMode 0 exits immediately, 1 pops up one level." },
+        "onLaunchSource": { "summary": "Fires with how this session was launched - app menu or glasses menu. Returns an unsubscribe function." },
+        "onDeviceStatusChanged": { "summary": "Fires on device connection/state changes. Returns an unsubscribe function." },
+        "onEvenHubEvent": { "summary": "The main input path: taps, scrolls, system events, IMU and audio all arrive here. Returns an unsubscribe function." },
+        "onAppLocationChanged": { "summary": "Fires on location updates while updates are running. Returns an unsubscribe function." }
+      }
+    },
+
+    "waitForEvenAppBridge": {
+      "summary": "Resolves once the bridge is initialised. The safe way to start any G2 app.",
+      "notes": [
+        "Returns immediately if the bridge is already ready, otherwise waits on the 'evenAppBridgeReady' event, with a 100 ms re-check as a fallback.",
+        "Await this before your first render - it is the single most common cause of a blank display on first boot."
+      ],
+      "example": "const bridge = await waitForEvenAppBridge();\nconst info = await bridge.getUserInfo();"
+    },
+
+    "CreateStartUpPageContainer": {
+      "summary": "The initial layout payload: how many containers the page has, and the text/image/list objects inside it.",
+      "notes": [
+        "containerTotalNum must be 1-12.",
+        "At most 8 textObject entries.",
+        "At most 4 imageObject entries.",
+        "widgetId is normally injected by the bridge - do not set it by hand.",
+        "Field model only: no protobuf encoding happens here."
+      ]
+    },
+
+    "RebuildPageContainer": {
+      "summary": "The layout payload for every update after startup. Same shape and same limits as the create call.",
+      "notes": [
+        "containerTotalNum must be 1-12.",
+        "At most 8 textObject entries.",
+        "At most 4 imageObject entries."
+      ]
+    },
+
+    "ShutDownContaniner": {
+      "summary": "Exit payload. Note the SDK's spelling - 'Contaniner' - it is not a typo on your side.",
+      "notes": ["exitMode 0 exits immediately; exitMode 1 pops up one level."]
+    },
+
+    "TextContainerProperty": {
+      "summary": "A positioned text region on the glasses display.",
+      "notes": [
+        "Display is 576 x 288, monochrome green - the ER Studio mirror renders it 1:1.",
+        "TODO: confirm the coordinate origin and whether width/height clip or wrap. Verify on hardware and record it here."
+      ]
+    },
+
+    "ImageContainerProperty": {
+      "summary": "A positioned image region. Pair with updateImageRawData to push pixels without a full rebuild.",
+      "notes": ["Images are converted to 4-level grayscale host-side; ImageRawDataUpdateResult reports conversion and size failures separately."]
+    },
+
+    "ListContainerProperty": {
+      "summary": "A scrollable list region. Item geometry and selection border come from ListItemContainerProperty."
+    },
+
+    "ListItemContainerProperty": {
+      "summary": "Per-item geometry for a list container: item count, item width, selection border flag, and the item labels.",
+      "notes": ["isItemSelectBorderEn is a 0/1 integer, not a boolean."]
+    },
+
+    "validateEvenHubPageContainerZOrder": {
+      "summary": "Checks same-page z-order rules before a payload reaches the native bridge. Run it in dev - a rejected payload on-device gives a much worse error.",
+      "notes": ["Omitting zOrderIndex everywhere is accepted; mixing set and unset values within one page is not."]
+    },
+
+    "EvenHubEvent": {
+      "summary": "The unified inbound event. Exactly one of the payload properties is populated - check which is non-null and use it directly.",
+      "example": "bridge.onEvenHubEvent(e => {\n  if (e.listEvent) { /* selection changed */ }\n  if (e.sysEvent)  { /* foreground / IMU */ }\n});"
+    },
+
+    "EvenHubEventType": { "summary": "Discriminator for EvenHubEvent: listEvent, textEvent, sysEvent, audioEvent, notSet." },
+    "OsEventTypeList": { "summary": "OS-level event codes: click, scroll top/bottom, double click, foreground enter/exit, abnormal exit." },
+    "AudioEventPayload": {
+      "summary": "PCM bytes pushed by the host during a microphone session.",
+      "notes": ["audioPcm arrives as number[] or base64 depending on host serialisation - bytesToJson normalises it."]
+    },
+    "ImuReportPace": { "summary": "IMU report rate. Encoded on the wire as integers from 100 to 1000." },
+    "ImageRawDataUpdateResult": { "summary": "Result of an image push: 0 success, 1 image exception, 2 size invalid, 3 grayscale conversion failed." },
+    "StartUpPageCreateResult": { "summary": "Result of the initial container creation, aligned with the host's EhStartUpPageCreateResult." },
+    "EvenHubErrorCodeName": { "summary": "Named error codes, matching the protocol enum names exactly." },
+
+    "DeviceInfo": {
+      "summary": "Identity of a paired Even device.",
+      "notes": ["model and sn are immutable after construction; status may be replaced but its sn must match."]
+    },
+    "DeviceStatus": { "summary": "Live device state - connection, battery and similar runtime values." },
+    "DeviceConnectType": {
+      "summary": "Connection state of a device.",
+      "notes": ["Deliberately not BLE-specific in naming, even though BLE is the common transport today."]
+    },
+    "UserInfo": { "summary": "The signed-in Even App user." },
+    "LaunchSource": { "summary": "How the page was opened: 'appMenu' or 'glassesMenu'. Pushed by the WebView once loading completes." },
+
+    "pick":             { "summary": "Returns the first present key's value from an object, in the order given." },
+    "pickLoose":        { "summary": "Like pick, but falls back to underscore-stripped, case-insensitive matching (containerID / ContainerID / Container_ID)." },
+    "normalizeLooseKey":{ "summary": "Normalises a key for loose matching: strips underscores and lowercases." },
+    "toNumber":         { "summary": "Best-effort number coercion; returns undefined when impossible. Tolerates numeric strings from the host." },
+    "toString":         { "summary": "Best-effort string coercion; returns undefined when impossible." },
+    "readNumber":       { "summary": "Loose-key number read from a host JSON object." },
+    "readString":       { "summary": "Loose-key string read from a host JSON object." },
+    "toObjectRecord":   { "summary": "Coerces a value to a plain record, returning {} for non-objects so parsers do not throw." },
+    "isObjectRecord":   { "summary": "True for plain objects only - arrays, null and undefined are false." },
+    "bytesToJson":      { "summary": "Normalises byte-like data (string, Uint8Array, ArrayBuffer) into a JSON-safe payload." },
+    "JsonRecord":       { "summary": "Alias for Record<string, any>. Used throughout the loose-key JSON helpers." }
+  },
+
+  "docLinks": {
+    "$comment": [
+      "Where OFFICIAL DOCS goes for a given symbol.",
+      "",
+      "The old default, evenrealities.com/developer, is the marketing site -",
+      "it has no API content at all, which is why the button felt broken: it",
+      "was a placeholder that every symbol fell through to.",
+      "",
+      "There is no per-symbol API page to link to. Even's own docs say the",
+      "*.d.ts files are the authoritative reference and document the API by",
+      "TOPIC instead (page lifecycle, display, device APIs). So the mapping",
+      "below is topic-based, and the panel labels the link with the page it",
+      "actually opens rather than pretending it is a symbol page.",
+      "",
+      "Resolution order, in sdkref.js merge():",
+      "  members  byMember['Owner.member'] -> byMember['member'] -> owner link",
+      "  symbols  bySymbol[name] -> byGroup[group] -> default",
+      "",
+      "Anything unmapped resolves to the docs root, never to a dead anchor.",
+      "Anchors verified against the live site 2026-08-12."
+    ],
+
+    "docsBase": "https://hub.evenrealities.com/docs",
+    "default": "https://hub.evenrealities.com/docs",
+
+    "byGroup": {
+      "bridge": "https://hub.evenrealities.com/docs/build/device-apis",
+      "containers": "https://hub.evenrealities.com/docs/build/display",
+      "events": "https://hub.evenrealities.com/docs/build/device-apis",
+      "device": "https://hub.evenrealities.com/docs/build/device-apis",
+      "enums": "https://hub.evenrealities.com/docs/build/device-apis",
+      "utils": "https://www.npmjs.com/package/@evenrealities/even_hub_sdk",
+      "other": "https://hub.evenrealities.com/docs"
+    },
+
+    "bySymbol": {
+      "EvenAppBridge": "https://hub.evenrealities.com/docs/build/device-apis",
+      "waitForEvenAppBridge": "https://hub.evenrealities.com/docs/get-started/quickstart/first-app",
+
+      "CreateStartUpPageContainer": "https://hub.evenrealities.com/docs/build/page-lifecycle#methods",
+      "RebuildPageContainer": "https://hub.evenrealities.com/docs/build/page-lifecycle#methods",
+      "ShutDownContaniner": "https://hub.evenrealities.com/docs/build/page-lifecycle#methods",
+
+      "TextContainerProperty": "https://hub.evenrealities.com/docs/build/display#text-containers",
+      "ImageContainerProperty": "https://hub.evenrealities.com/docs/build/display#image-containers",
+      "ListContainerProperty": "https://hub.evenrealities.com/docs/build/display#list-containers",
+      "ListItemContainerProperty": "https://hub.evenrealities.com/docs/build/display#list-containers",
+      "validateEvenHubPageContainerZOrder": "https://hub.evenrealities.com/docs/build/display#stacking-order-zorderindex",
+
+      "EvenHubEvent": "https://hub.evenrealities.com/docs/build/device-apis#handling-events",
+      "EvenHubEventType": "https://hub.evenrealities.com/docs/build/device-apis#event-types",
+      "OsEventTypeList": "https://hub.evenrealities.com/docs/build/device-apis#event-types",
+      "AudioEventPayload": "https://hub.evenrealities.com/docs/build/device-apis#audio",
+      "ImuReportPace": "https://hub.evenrealities.com/docs/build/device-apis#imureportpace",
+
+      "ImageRawDataUpdateResult": "https://hub.evenrealities.com/docs/build/page-lifecycle#result-codes",
+      "StartUpPageCreateResult": "https://hub.evenrealities.com/docs/build/page-lifecycle#result-codes",
+      "EvenHubErrorCodeName": "https://hub.evenrealities.com/docs/reference/glossary",
+
+      "DeviceInfo": "https://hub.evenrealities.com/docs/build/device-apis#device-info",
+      "DeviceStatus": "https://hub.evenrealities.com/docs/build/device-apis#device-info",
+      "DeviceConnectType": "https://hub.evenrealities.com/docs/build/device-apis#device-info",
+      "UserInfo": "https://hub.evenrealities.com/docs/build/device-apis#user-info",
+      "LaunchSource": "https://hub.evenrealities.com/docs/build/background-lifecycle",
+
+      "AppImageAsset": "https://hub.evenrealities.com/docs/build/device-apis#appimageasset-shape",
+      "appImageAssetFromJson": "https://hub.evenrealities.com/docs/build/device-apis#photos",
+      "AppLocation": "https://hub.evenrealities.com/docs/build/device-apis#applocation-shape",
+      "AppLocationAccuracy": "https://hub.evenrealities.com/docs/build/device-apis#applocationaccuracy",
+      "appLocationFromJson": "https://hub.evenrealities.com/docs/build/device-apis#location",
+      "AppLocationOptions": "https://hub.evenrealities.com/docs/build/device-apis#continuous",
+      "AudioEvent": "https://hub.evenrealities.com/docs/build/device-apis#audio",
+      "AudioInputSource": "https://hub.evenrealities.com/docs/build/device-apis#audioinputsource",
+      "normalizeAudioInputSource": "https://hub.evenrealities.com/docs/build/device-apis#audioinputsource",
+      "BridgeEvent": "https://hub.evenrealities.com/docs/build/device-apis#os-event-models",
+      "createDefaultEvenHubEvent": "https://hub.evenrealities.com/docs/build/device-apis#handling-events",
+      "DeviceModel": "https://hub.evenrealities.com/docs/build/device-apis#device-info",
+      "EvenAppMessageType": "https://hub.evenrealities.com/docs/get-started/architecture",
+      "EvenAppMethod": "https://hub.evenrealities.com/docs/build/page-lifecycle#methods",
+      "EvenHubContainerKind": "https://hub.evenrealities.com/docs/build/display#containers",
+      "EvenHubContainerRef": "https://hub.evenrealities.com/docs/build/display#containers",
+      "EvenHubErrorCode": "https://hub.evenrealities.com/docs/reference/glossary",
+      "evenHubEventFromJson": "https://hub.evenrealities.com/docs/build/device-apis#handling-events",
+      "EvenHubEventPayload": "https://hub.evenrealities.com/docs/build/device-apis#handling-events",
+      "EvenHubPageContainerLike": "https://hub.evenrealities.com/docs/build/display#containers",
+      "EvenHubPageContainerValidationErrorCode": "https://hub.evenrealities.com/docs/build/display#stacking-order-zorderindex",
+      "EvenHubPageContainerValidationResult": "https://hub.evenrealities.com/docs/build/display#stacking-order-zorderindex",
+      "formatEvenHubPageContainerValidationError": "https://hub.evenrealities.com/docs/build/display#stacking-order-zorderindex",
+      "EventSourceType": "https://hub.evenrealities.com/docs/build/device-apis#inputs",
+      "ImageRawDataUpdate": "https://hub.evenrealities.com/docs/build/display#image-containers",
+      "ImageRawDataUpdateFields": "https://hub.evenrealities.com/docs/build/display#image-containers",
+      "IMU_Report_Data": "https://hub.evenrealities.com/docs/build/device-apis#imu-data-shape",
+      "ImuCtrlCmd": "https://hub.evenrealities.com/docs/build/device-apis#imucontrol-isopen-reportfrq",
+      "ImuCtrlCmdResponse": "https://hub.evenrealities.com/docs/build/device-apis#imucontrol-isopen-reportfrq",
+      "LAUNCH_SOURCE_APP_MENU": "https://hub.evenrealities.com/docs/build/background-lifecycle",
+      "LAUNCH_SOURCE_GLASSES_MENU": "https://hub.evenrealities.com/docs/build/background-lifecycle",
+      "List_ItemEvent": "https://hub.evenrealities.com/docs/build/device-apis#event-routing",
+      "Sys_ItemEvent": "https://hub.evenrealities.com/docs/build/device-apis#os-event-models",
+      "Text_ItemEvent": "https://hub.evenrealities.com/docs/build/device-apis#event-routing",
+      "TextContainerUpgrade": "https://hub.evenrealities.com/docs/build/display#in-place-updates"
+    },
+
+    "byMember": {
+      "createStartUpPageContainer": "https://hub.evenrealities.com/docs/build/page-lifecycle#methods",
+      "rebuildPageContainer": "https://hub.evenrealities.com/docs/build/page-lifecycle#methods",
+      "shutDownPageContainer": "https://hub.evenrealities.com/docs/build/page-lifecycle#methods",
+      "callEvenApp": "https://hub.evenrealities.com/docs/build/page-lifecycle#methods",
+      "textContainerUpgrade": "https://hub.evenrealities.com/docs/build/display#in-place-updates",
+      "updateImageRawData": "https://hub.evenrealities.com/docs/build/display#image-containers",
+
+      "onEvenHubEvent": "https://hub.evenrealities.com/docs/build/device-apis#handling-events",
+      "audioControl": "https://hub.evenrealities.com/docs/build/device-apis#audio",
+      "imuControl": "https://hub.evenrealities.com/docs/build/device-apis#imucontrol-isopen-reportfrq",
+
+      "getAppLocation": "https://hub.evenrealities.com/docs/build/device-apis#one-shot",
+      "startAppLocationUpdates": "https://hub.evenrealities.com/docs/build/device-apis#continuous",
+      "stopAppLocationUpdates": "https://hub.evenrealities.com/docs/build/device-apis#continuous",
+      "onAppLocationChanged": "https://hub.evenrealities.com/docs/build/device-apis#continuous",
+
+      "pickImageFromAlbum": "https://hub.evenrealities.com/docs/build/device-apis#photos",
+      "captureImageFromCamera": "https://hub.evenrealities.com/docs/build/device-apis#photos",
+
+      "getDeviceInfo": "https://hub.evenrealities.com/docs/build/device-apis#device-info",
+      "onDeviceStatusChanged": "https://hub.evenrealities.com/docs/build/device-apis#device-info",
+      "getUserInfo": "https://hub.evenrealities.com/docs/build/device-apis#user-info",
+
+      "setLocalStorage": "https://hub.evenrealities.com/docs/build/device-apis#local-storage",
+      "getLocalStorage": "https://hub.evenrealities.com/docs/build/device-apis#local-storage",
+
+      "onLaunchSource": "https://hub.evenrealities.com/docs/build/background-lifecycle",
+      "setBackgroundState": "https://hub.evenrealities.com/docs/build/background-lifecycle",
+      "onBackgroundRestore": "https://hub.evenrealities.com/docs/build/background-lifecycle"
+    },
+
+    "pageLabels": {
+      "https://hub.evenrealities.com/docs": "Docs home",
+      "https://hub.evenrealities.com/docs/get-started/quickstart/first-app": "Your First App",
+      "https://hub.evenrealities.com/docs/build/page-lifecycle": "Page Lifecycle",
+      "https://hub.evenrealities.com/docs/build/display": "Display & UI System",
+      "https://hub.evenrealities.com/docs/build/device-apis": "Device APIs",
+      "https://hub.evenrealities.com/docs/build/background-lifecycle": "Background & Lifecycle",
+      "https://hub.evenrealities.com/docs/build/networking": "Networking",
+      "https://hub.evenrealities.com/docs/reference/glossary": "Glossary",
+      "https://hub.evenrealities.com/docs/ship/packaging": "Packaging & Deployment",
+      "https://www.npmjs.com/package/@evenrealities/even_hub_sdk": "SDK on npm"
+    }
+  }
+}

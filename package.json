@@ -1,0 +1,22 @@
+{
+  "name": "er-studio-monorepo",
+  "version": "0.1.5",
+  "private": true,
+  "description": "ER Studio - VS Code extension for building Even Realities G2 (Even Hub) apps",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "start": "npm start -w @er-studio/core",
+    "test": "npm test -w er-studio",
+    "package": "npm run package -w er-studio",
+    "publish": "npm run publish -w er-studio",
+    "build:sdkref": "npm run build:sdkref -w @er-studio/core"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "author": "Gabriele Vierti",
+  "license": "MIT"
+}
