@@ -125,8 +125,12 @@ function activate(context) {
     })
   );
 
-  // Panels are themed by the core stylesheet; tell them which way round the
-  // host currently is so they are not a dark rectangle in a light theme.
+  // Panels follow the active theme by themselves now: the webview wrapper
+  // watches the --vscode-* variables VS Code writes onto its own <html> and
+  // posts them into the framed page (see src/theme-bridge.js), so a theme
+  // switch repaints in place instead of reloading the panel and throwing away
+  // the terminal's scrollback. This subscription is kept as the belt to that
+  // braces - a provider that wants to do more on a theme change still can.
   context.subscriptions.push(
     vscode.window.onDidChangeActiveColorTheme(() => {
       for (const provider of providers.values()) provider.refreshTheme();

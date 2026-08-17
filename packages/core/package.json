@@ -1,6 +1,6 @@
 {
   "name": "@er-studio/core",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "ER Studio core - local dev server, panel UI, environment doctor and SDK reference",
   "main": "index.js",
   "scripts": {

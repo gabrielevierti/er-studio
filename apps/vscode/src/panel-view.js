@@ -7,6 +7,7 @@
 // browser.
 
 const vscode = require('vscode');
+const { THEME_BRIDGE } = require('./theme-bridge');
 
 class PanelViewProvider {
   /**
@@ -72,9 +73,11 @@ class PanelViewProvider {
     return this.render();
   }
 
-  refreshTheme() {
-    return this.render();
-  }
+  // A theme change used to re-render, which reloads the iframe and takes the
+  // terminal's scrollback and the mirror's canvas with it. The frame now
+  // repaints itself from the variables the host pushes down, so there is
+  // nothing left to do here.
+  refreshTheme() {}
 
   themeName() {
     const kind = vscode.window.activeColorTheme.kind;
@@ -95,7 +98,10 @@ class PanelViewProvider {
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'none'; frame-src http://127.0.0.1:${port}; script-src 'unsafe-inline'; style-src 'unsafe-inline';">
 <style>
-  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--vscode-editor-background); }
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: var(--vscode-panel-background, var(--vscode-editor-background));
+  }
   iframe { border: 0; width: 100%; height: 100%; display: block; }
 </style>
 </head>
@@ -103,9 +109,16 @@ class PanelViewProvider {
 <iframe id="panel" src="${src}" allow="clipboard-read; clipboard-write"></iframe>
 <script>
   const frame = document.getElementById('panel');
+
+  ${THEME_BRIDGE}
+
   // Relay commands from the extension host down into the panel page.
   window.addEventListener('message', e => {
     const msg = e.data || {};
+
+    // The panel asks for the theme as soon as its scripts run - answer it.
+    if (msg.type === 'er-theme-request') { pushTheme(); return; }
+
     // Everything the host addresses to the panel goes down: er-command drives
     // the panel's own buttons, er-lookup and er-reload are heard by the panel
     // script itself.

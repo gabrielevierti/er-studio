@@ -17,6 +17,42 @@
 const detachedDocs = new Set();
 window.__erDocs = detachedDocs;
 
+/* ---------------- theme colours ----------------
+   CSS handles every surface the browser paints. These three do not go through
+   CSS - Monaco, xterm and the metrics sparklines each want colours handed to
+   them as strings - so they read the same tokens theme.css defines and
+   re-read them whenever the host theme changes.
+
+   Resolving through a probe element rather than getPropertyValue is
+   deliberate: a token may land on a hex, an rgb(), or an 8-digit hex
+   depending on the theme, and `color` normalises all of them to one form. */
+
+function resolveColour(token, fallback) {
+  const probe = document.createElement('span');
+  probe.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none';
+  probe.style.color = fallback;
+  probe.style.color = `var(${token}, ${fallback})`;
+  (document.body || document.documentElement).appendChild(probe);
+  const value = getComputedStyle(probe).color;
+  probe.remove();
+  return value || fallback;
+}
+
+/** Same, as #rrggbb - Monaco and xterm both reject rgb() notation. */
+function resolveHex(token, fallback) {
+  const parts = resolveColour(token, fallback).match(/[\d.]+/g);
+  if (!parts || parts.length < 3) return fallback;
+  const hex = n => Math.max(0, Math.min(255, Math.round(Number(n)))).toString(16).padStart(2, '0');
+  const alpha = parts.length > 3 ? Number(parts[3]) : 1;
+  const base = '#' + hex(parts[0]) + hex(parts[1]) + hex(parts[2]);
+  return alpha >= 1 ? base : base + hex(alpha * 255);
+}
+
+/** Monaco token rules want a bare 6-digit hex with no leading hash. */
+function resolveToken(token, fallback) {
+  return resolveHex(token, fallback).slice(1, 7);
+}
+
 const $ = sel => {
   const hit = document.querySelector(sel);
   if (hit) return hit;
@@ -136,12 +172,12 @@ function connectWs() {
   ws = new WebSocket(`ws://${location.host}/ws`);
 
   ws.onopen = () => {
-    $('#status-conn').textContent = 'WS CONNECTED';
+    $('#status-conn').textContent = 'Connected';
     $('#status-conn').dataset.state = 'on';
   };
 
   ws.onclose = () => {
-    $('#status-conn').textContent = 'WS DISCONNECTED';
+    $('#status-conn').textContent = 'Disconnected';
     $('#status-conn').dataset.state = 'off';
     setTimeout(connectWs, 1500);
   };
@@ -725,7 +761,7 @@ function renderFixResults(results) {
 
   const dismiss = document.createElement('button');
   dismiss.className = 'icon-btn fix-result-dismiss';
-  dismiss.textContent = 'DISMISS';
+  dismiss.textContent = 'Dismiss';
   dismiss.addEventListener('click', () => { host.hidden = true; });
   host.appendChild(dismiss);
 
@@ -814,7 +850,7 @@ function buildDoctorRow(check) {
       link.href = check.fix.url;
       link.target = '_blank';
       link.rel = 'noopener';
-      link.textContent = 'DOCS \u2197';
+      link.textContent = 'Docs \u2197';
       fix.append(document.createTextNode(' '), link);
     }
 
@@ -825,7 +861,7 @@ function buildDoctorRow(check) {
       code.textContent = check.fix.command;
       const copy = document.createElement('button');
       copy.className = 'doctor-rerun';
-      copy.textContent = 'COPY';
+      copy.textContent = 'Copy';
       copy.title = 'Copy this command';
       copy.addEventListener('click', () => {
         copyText(check.fix.command).then(ok => toast(ok ? 'Command copied' : 'Could not copy', !ok));
@@ -835,7 +871,7 @@ function buildDoctorRow(check) {
       if (isRowFix(check)) {
         const run = document.createElement('button');
         run.className = 'doctor-rerun doctor-runfix';
-        run.textContent = 'RUN';
+        run.textContent = 'Run';
         run.title = 'Run this command now';
         run.addEventListener('click', () => runFixes([check.id]));
         cmdWrap.appendChild(run);
@@ -843,7 +879,7 @@ function buildDoctorRow(check) {
         // Without this, a missing RUN button reads as a bug rather than a decision.
         const manual = document.createElement('span');
         manual.className = 'doctor-manual';
-        manual.textContent = 'MANUAL';
+        manual.textContent = 'Manual';
         manual.title = 'Not run automatically: this edits files outside the workspace, changes permissions, or stops a process. Read it before you run it.';
         cmdWrap.appendChild(manual);
       }
@@ -1112,32 +1148,93 @@ const LANG_BY_EXT = {
   md: 'markdown', yml: 'yaml', yaml: 'yaml', sh: 'shell', svg: 'xml', xml: 'xml'
 };
 
+function resolveFontFamily(token, fallback) {
+  const probe = document.createElement('span');
+  probe.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none';
+  probe.style.fontFamily = `var(${token}, ${fallback})`;
+  (document.body || document.documentElement).appendChild(probe);
+  const value = getComputedStyle(probe).fontFamily;
+  probe.remove();
+  return value || fallback;
+}
+
+function resolveFontSize(token, fallback) {
+  const raw = window.ERTheme ? window.ERTheme.token(token, '') : '';
+  const size = parseFloat(raw);
+  return Number.isFinite(size) && size > 0 ? size : fallback;
+}
+
+/* The workbench exposes its *workbench* colours to a webview but not its
+   syntax theme, so the chrome around the editor matches exactly and the
+   tokens are a close read: strings and numbers borrow the colours the debug
+   views use for the same things, keywords borrow the symbol icon colour.
+   Better an honest approximation from the live theme than a fixed palette
+   that is wrong in every theme but one. */
+function applyMonacoTheme() {
+  if (!monacoRef) return;
+
+  const kind = window.ERTheme ? window.ERTheme.kind() : null;
+  const base =
+    kind === 'vscode-light' ? 'vs' :
+    kind === 'vscode-high-contrast' ? 'hc-black' :
+    kind === 'vscode-high-contrast-light' ? 'hc-light' :
+    'vs-dark';
+
+  const bg = resolveHex('--vscode-editor-background', '#080b11');
+
+  monacoRef.editor.defineTheme('er-editor', {
+    base,
+    inherit: true,
+    rules: [
+      { token: 'comment', foreground: resolveToken('--vscode-descriptionForeground', '#5d6b81') },
+      { token: 'string', foreground: resolveToken('--vscode-debugTokenExpression-string', '#46e08a') },
+      { token: 'number', foreground: resolveToken('--vscode-debugTokenExpression-number', '#e0b34a') },
+      { token: 'keyword', foreground: resolveToken('--vscode-symbolIcon-keywordForeground', '#5aa2e0') },
+      { token: 'type', foreground: resolveToken('--vscode-symbolIcon-classForeground', '#5aa2e0') },
+      { token: 'variable', foreground: resolveToken('--vscode-symbolIcon-variableForeground', '#c6cfdc') }
+    ],
+    colors: {
+      'editor.background': bg,
+      'editor.foreground': resolveHex('--vscode-editor-foreground', '#c6cfdc'),
+      'editor.lineHighlightBackground': resolveHex('--vscode-editor-lineHighlightBackground', '#0c1018'),
+      'editor.selectionBackground': resolveHex('--vscode-editor-selectionBackground', '#1d4a3355'),
+      'editorLineNumber.foreground': resolveHex('--vscode-editorLineNumber-foreground', '#3a4658'),
+      'editorLineNumber.activeForeground': resolveHex('--vscode-editorLineNumber-activeForeground', '#c6cfdc'),
+      'editorGutter.background': resolveHex('--vscode-editorGutter-background', bg),
+      'editorCursor.foreground': resolveHex('--vscode-editorCursor-foreground', '#46e08a'),
+      'editorIndentGuide.background1': resolveHex('--vscode-editorIndentGuide-background1', '#1b2330'),
+      'editorWhitespace.foreground': resolveHex('--vscode-editorWhitespace-foreground', '#273246'),
+      'editorWidget.background': resolveHex('--vscode-editorWidget-background', '#0c1018'),
+      'editorWidget.border': resolveHex('--vscode-editorWidget-border', '#273246'),
+      'editorSuggestWidget.background': resolveHex('--vscode-editorSuggestWidget-background', '#0c1018'),
+      'editorSuggestWidget.selectedBackground': resolveHex('--vscode-editorSuggestWidget-selectedBackground', '#1d4a33'),
+      'editorHoverWidget.background': resolveHex('--vscode-editorHoverWidget-background', '#0c1018'),
+      'scrollbarSlider.background': resolveHex('--vscode-scrollbarSlider-background', '#27324699'),
+      'scrollbarSlider.hoverBackground': resolveHex('--vscode-scrollbarSlider-hoverBackground', '#273246cc'),
+      'scrollbarSlider.activeBackground': resolveHex('--vscode-scrollbarSlider-activeBackground', '#273246')
+    }
+  });
+
+  monacoRef.editor.setTheme('er-editor');
+
+  if (editor) {
+    editor.updateOptions({
+      fontFamily: resolveFontFamily('--mono', "'IBM Plex Mono', monospace"),
+      fontSize: resolveFontSize('--vscode-editor-font-size', 12.5)
+    });
+  }
+}
+
 function initMonaco() {
   return new Promise(resolve => {
     require.config({ paths: { vs: 'vendor/monaco/vs' } });
     require(['vs/editor/editor.main'], () => {
       monacoRef = window.monaco;
-      monacoRef.editor.defineTheme('er-dark', {
-        base: 'vs-dark',
-        inherit: true,
-        rules: [
-          { token: 'comment', foreground: '5d6b81' },
-          { token: 'string', foreground: '46e08a' },
-          { token: 'keyword', foreground: '5aa2e0' },
-          { token: 'number', foreground: 'e0b34a' }
-        ],
-        colors: {
-          'editor.background': '#080b11',
-          'editor.lineHighlightBackground': '#0c1018',
-          'editorLineNumber.foreground': '#3a4658',
-          'editorGutter.background': '#080b11',
-          'editorCursor.foreground': '#46e08a',
-          'editor.selectionBackground': '#1d4a3355'
-        }
-      });
+      applyMonacoTheme();
+      window.addEventListener('er-theme', applyMonacoTheme);
       editor = monacoRef.editor.create($('#monaco-host'), {
-        theme: 'er-dark',
-        fontFamily: "'IBM Plex Mono', monospace",
+        theme: 'er-editor',
+        fontFamily: resolveFontFamily('--mono', "'IBM Plex Mono', monospace"),
         fontSize: 12.5,
         minimap: { enabled: false },
         automaticLayout: true,
@@ -1519,17 +1616,31 @@ function drawSpark(canvas, values, colour) {
   ctx.lineTo(offset + (values.length - 1) * step, height);
   ctx.lineTo(offset, height);
   ctx.closePath();
-  ctx.fillStyle = colour.replace('rgb', 'rgba').replace(')', ', 0.13)');
+  // globalAlpha rather than rewriting the colour string: a theme token can
+  // resolve to a hex, an rgb() or an rgba(), and only one of those survives
+  // being patched by hand.
+  ctx.globalAlpha = 0.13;
+  ctx.fillStyle = colour;
   ctx.fill();
+  ctx.globalAlpha = 1;
 }
 
-const SPARK_COLOURS = {
-  fps: 'rgb(70, 224, 138)',
-  latency: 'rgb(224, 179, 74)',
-  lit: 'rgb(90, 162, 224)',
-  delta: 'rgb(90, 162, 224)',
-  rss: 'rgb(93, 107, 129)'
+/* Read once per paint so a theme switch shows up on the next sample without
+   any explicit invalidation. */
+const SPARK_TOKENS = {
+  fps: ['--ok', 'rgb(70, 224, 138)'],
+  latency: ['--warn', 'rgb(224, 179, 74)'],
+  lit: ['--info', 'rgb(90, 162, 224)'],
+  delta: ['--info', 'rgb(90, 162, 224)'],
+  rss: ['--muted', 'rgb(93, 107, 129)']
 };
+
+const SPARK_COLOURS = new Proxy({}, {
+  get(_, key) {
+    const spec = SPARK_TOKENS[key];
+    return spec ? resolveColour(spec[0], spec[1]) : undefined;
+  }
+});
 
 function paintSparks() {
   for (const canvas of $$('.spark')) {
@@ -1539,6 +1650,8 @@ function paintSparks() {
     catch { /* zero-size canvas while the panel is hidden */ }
   }
 }
+
+window.addEventListener('er-theme', paintSparks);
 
 /* ---------------- process log ---------------- */
 
@@ -1658,17 +1771,49 @@ if (resetMetrics) {
 
 /* ---------------- terminal ---------------- */
 
+/* xterm gets the workbench's own terminal palette, all sixteen ANSI slots
+   included - so `ls` in this terminal is coloured exactly like `ls` in the
+   integrated terminal one panel over. */
+function terminalTheme() {
+  const ansi = (name, fallback) => resolveHex('--vscode-terminal-ansi' + name, fallback);
+  return {
+    background: resolveHex('--vscode-terminal-background', resolveHex('--panel', '#0c1018')),
+    foreground: resolveHex('--vscode-terminal-foreground', resolveHex('--text', '#c6cfdc')),
+    cursor: resolveHex('--vscode-terminalCursor-foreground', resolveHex('--focus', '#46e08a')),
+    cursorAccent: resolveHex('--vscode-terminalCursor-background', resolveHex('--panel', '#0c1018')),
+    selectionBackground: resolveHex('--vscode-terminal-selectionBackground', '#1d4a3388'),
+    black: ansi('Black', '#0c1018'),
+    red: ansi('Red', '#e05555'),
+    green: ansi('Green', '#46e08a'),
+    yellow: ansi('Yellow', '#e0b34a'),
+    blue: ansi('Blue', '#5aa2e0'),
+    magenta: ansi('Magenta', '#a98ae0'),
+    cyan: ansi('Cyan', '#4ec9c9'),
+    white: ansi('White', '#c6cfdc'),
+    brightBlack: ansi('BrightBlack', '#5d6b81'),
+    brightRed: ansi('BrightRed', '#ff6b6b'),
+    brightGreen: ansi('BrightGreen', '#6df0a5'),
+    brightYellow: ansi('BrightYellow', '#f0c96a'),
+    brightBlue: ansi('BrightBlue', '#7fbcf0'),
+    brightMagenta: ansi('BrightMagenta', '#c3a6f5'),
+    brightCyan: ansi('BrightCyan', '#6fe0e0'),
+    brightWhite: ansi('BrightWhite', '#e6ecf4')
+  };
+}
+
 function initTerminal() {
   term = new Terminal({
-    fontFamily: "'IBM Plex Mono', monospace",
+    fontFamily: resolveFontFamily('--mono', "'IBM Plex Mono', monospace"),
     fontSize: 12,
-    theme: {
-      background: '#0c1018',
-      foreground: '#c6cfdc',
-      cursor: '#46e08a',
-      selectionBackground: '#1d4a3388'
-    },
+    theme: terminalTheme(),
     cursorBlink: true
+  });
+
+  window.addEventListener('er-theme', () => {
+    if (!term) return;
+    term.options.theme = terminalTheme();
+    term.options.fontFamily = resolveFontFamily('--mono', "'IBM Plex Mono', monospace");
+    try { if (fitAddon) fitAddon.fit(); } catch { /* not laid out */ }
   });
   fitAddon = new FitAddon.FitAddon();
   term.loadAddon(fitAddon);

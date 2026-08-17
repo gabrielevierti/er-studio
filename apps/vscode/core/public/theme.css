@@ -1,0 +1,193 @@
+/* ER Studio - theme tokens
+   ==========================================================================
+   Every colour, font and radius in the UI resolves through this file.
+
+   Inside VS Code the panels are framed from http://127.0.0.1:<port>/embed,
+   which is a different origin from the webview - so the workbench's
+   --vscode-* variables do not reach them by inheritance. theme.js receives
+   them over postMessage and re-declares them on this document's :root, and
+   from there every token below picks them up.
+
+   Each token is written as var(--vscode-X, <fallback>). The fallback is the
+   original ER Studio palette, so opening the server directly in a browser
+   (npm start, no VS Code anywhere) looks exactly as it always did.
+
+   Two things deliberately do NOT follow the theme: the simulator mirror and
+   the lens frame around it. Those really are mono green on black - that is
+   the hardware, not a style choice.
+   ========================================================================== */
+
+:root {
+  /* ---------- type ----------------------------------------------------- */
+  --sans: var(--vscode-font-family, 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
+  --mono: var(--vscode-editor-font-family, 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace);
+
+  --fs-body: var(--vscode-font-size, 13px);
+  --fs-sm: 12px;
+  --fs-xs: 11px;
+  --fs-code: 12px;
+  --fw-normal: var(--vscode-font-weight, 400);
+  --fw-semi: 600;
+
+  /* Section headers. VS Code sets these in caps at 11px with almost no
+     tracking - the old 9px/2px-tracking labels read as a different product. */
+  --fs-head: 11px;
+  --ls-head: 0.02em;
+
+  /* ---------- geometry -------------------------------------------------- */
+  --r-sm: 2px;   /* buttons, inputs - what the workbench uses */
+  --r-md: 4px;   /* wells, cards */
+  --r-pill: 10px;
+
+  /* ---------- surfaces -------------------------------------------------- */
+  /* Deepest layer: editor-like content wells. */
+  --bg: var(--vscode-editor-background, #080b11);
+
+  /* A panel body. */
+  --panel: var(--vscode-panel-background, var(--vscode-sideBar-background, var(--vscode-editor-background, #0c1018)));
+
+  /* Toolbar / section-header strips. In most themes this equals --panel,
+     which is exactly right: VS Code separates a toolbar with a rule, not a
+     second shade. */
+  --panel-2: var(--vscode-sideBarSectionHeader-background, var(--vscode-editorWidget-background, #10151f));
+
+  /* Row hover. */
+  --panel-3: var(--vscode-list-hoverBackground, #141a26);
+
+  /* Sunken code / command wells. */
+  --well: var(--vscode-textCodeBlock-background, var(--vscode-editor-background, #080b11));
+
+  /* ---------- borders --------------------------------------------------- */
+  --border: var(--vscode-panel-border, var(--vscode-widget-border, #1b2330));
+  --border-hi: var(--vscode-contrastBorder, var(--vscode-widget-border, #273246));
+
+  /* ---------- text ------------------------------------------------------ */
+  --text: var(--vscode-foreground, #c6cfdc);
+  --text-strong: var(--vscode-editor-foreground, var(--vscode-foreground, #e6ecf4));
+  --muted: var(--vscode-descriptionForeground, #5d6b81);
+  --faint: var(--vscode-disabledForeground, #3a4658);
+
+  /* ---------- interaction ----------------------------------------------- */
+  --focus: var(--vscode-focusBorder, #46e08a);
+  --link: var(--vscode-textLink-foreground, #5aa2e0);
+  --link-hover: var(--vscode-textLink-activeForeground, var(--vscode-textLink-foreground, #7fbcf0));
+
+  --sel-bg: var(--vscode-list-activeSelectionBackground, #1d4a33);
+  --sel-fg: var(--vscode-list-activeSelectionForeground, #46e08a);
+  --sel-border: var(--vscode-list-focusOutline, transparent);
+
+  --tab-active-fg: var(--vscode-panelTitle-activeForeground, var(--vscode-foreground, #c6cfdc));
+  --tab-inactive-fg: var(--vscode-panelTitle-inactiveForeground, var(--vscode-descriptionForeground, #5d6b81));
+  --tab-active-border: var(--vscode-panelTitle-activeBorder, var(--vscode-focusBorder, #46e08a));
+
+  --btn-bg: var(--vscode-button-background, #1d4a33);
+  --btn-fg: var(--vscode-button-foreground, #eafff2);
+  --btn-hover: var(--vscode-button-hoverBackground, var(--vscode-button-background, #256b46));
+  --btn-border: var(--vscode-button-border, transparent);
+  --btn2-bg: var(--vscode-button-secondaryBackground, #10151f);
+  --btn2-fg: var(--vscode-button-secondaryForeground, #c6cfdc);
+  --btn2-hover: var(--vscode-button-secondaryHoverBackground, #141a26);
+
+  --input-bg: var(--vscode-input-background, #10151f);
+  --input-fg: var(--vscode-input-foreground, #c6cfdc);
+  --input-border: var(--vscode-input-border, #1b2330);
+  --input-ph: var(--vscode-input-placeholderForeground, #4a5668);
+
+  --dropdown-bg: var(--vscode-dropdown-background, var(--vscode-input-background, #10151f));
+  --dropdown-fg: var(--vscode-dropdown-foreground, var(--vscode-input-foreground, #c6cfdc));
+  --dropdown-border: var(--vscode-dropdown-border, var(--vscode-input-border, #1b2330));
+
+  --badge-bg: var(--vscode-badge-background, #5d6b81);
+  --badge-fg: var(--vscode-badge-foreground, #080b11);
+
+  --widget-bg: var(--vscode-editorWidget-background, #0c1018);
+  --widget-border: var(--vscode-editorWidget-border, var(--vscode-widget-border, #273246));
+  --widget-shadow: var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+
+  --menu-bg: var(--vscode-menu-background, var(--vscode-editorWidget-background, #10151f));
+  --menu-fg: var(--vscode-menu-foreground, var(--vscode-foreground, #c6cfdc));
+  --menu-sel-bg: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground, #1d4a33));
+  --menu-sel-fg: var(--vscode-menu-selectionForeground, var(--vscode-list-activeSelectionForeground, #46e08a));
+  --menu-border: var(--vscode-menu-border, var(--vscode-widget-border, #273246));
+  --menu-sep: var(--vscode-menu-separatorBackground, var(--vscode-panel-border, #1b2330));
+
+  --notif-bg: var(--vscode-notifications-background, var(--vscode-editorWidget-background, #10151f));
+  --notif-border: var(--vscode-notifications-border, var(--vscode-widget-border, #273246));
+
+  --scroll: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));
+  --scroll-hover: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
+  --scroll-active: var(--vscode-scrollbarSlider-activeBackground, rgba(191, 191, 191, 0.4));
+
+  --sash-hover: var(--vscode-sash-hoverBorder, var(--vscode-focusBorder, #46e08a));
+
+  --status-bar-bg: var(--vscode-statusBar-background, var(--vscode-panel-background, #0c1018));
+  --status-bar-fg: var(--vscode-statusBar-foreground, var(--vscode-descriptionForeground, #5d6b81));
+  --status-item-hover: var(--vscode-statusBarItem-hoverBackground, rgba(255, 255, 255, 0.12));
+
+  --tabs-bg: var(--vscode-editorGroupHeader-tabsBackground, var(--vscode-panel-background, #0c1018));
+  --tab-bg: var(--vscode-tab-inactiveBackground, var(--vscode-editorGroupHeader-tabsBackground, #0c1018));
+  --tab-active-bg: var(--vscode-tab-activeBackground, var(--vscode-editor-background, #080b11));
+  --tab-border: var(--vscode-tab-border, var(--vscode-panel-border, #1b2330));
+  --tab-top-border: var(--vscode-tab-activeBorderTop, var(--vscode-focusBorder, #46e08a));
+
+  /* ---------- status --------------------------------------------------- */
+  --ok: var(--vscode-testing-iconPassed, var(--vscode-charts-green, #46e08a));
+  --warn: var(--vscode-editorWarning-foreground, var(--vscode-charts-yellow, #e0b34a));
+  --err: var(--vscode-editorError-foreground, var(--vscode-charts-red, #e05555));
+  --info: var(--vscode-charts-blue, var(--vscode-textLink-foreground, #5aa2e0));
+
+  /* Tints derived from whatever the theme gave us above, so a status row
+     reads the same in Solarized Light as in Dark+. */
+  --ok-tint: rgba(70, 224, 138, 0.10);
+  --ok-tint: color-mix(in srgb, var(--ok) 12%, transparent);
+  --warn-tint: rgba(224, 179, 74, 0.10);
+  --warn-tint: color-mix(in srgb, var(--warn) 12%, transparent);
+  --err-tint: rgba(224, 85, 85, 0.10);
+  --err-tint: color-mix(in srgb, var(--err) 12%, transparent);
+
+  --ok-line: rgba(70, 224, 138, 0.4);
+  --ok-line: color-mix(in srgb, var(--ok) 45%, transparent);
+  --warn-line: rgba(224, 179, 74, 0.4);
+  --warn-line: color-mix(in srgb, var(--warn) 45%, transparent);
+  --err-line: rgba(224, 85, 85, 0.4);
+  --err-line: color-mix(in srgb, var(--err) 45%, transparent);
+
+  /* ---------- symbol kinds ---------------------------------------------
+     The SDK reference colours a class the same colour VS Code's own outline
+     and IntelliSense colour a class. Nothing new is invented. */
+  --kind-class: var(--vscode-symbolIcon-classForeground, #5aa2e0);
+  --kind-function: var(--vscode-symbolIcon-functionForeground, #46e08a);
+  --kind-enum: var(--vscode-symbolIcon-enumeratorForeground, #e0b34a);
+  --kind-interface: var(--vscode-symbolIcon-interfaceForeground, #a98ae0);
+  --kind-type: var(--vscode-symbolIcon-typeParameterForeground, var(--vscode-symbolIcon-interfaceForeground, #a98ae0));
+  --kind-variable: var(--vscode-symbolIcon-variableForeground, var(--vscode-foreground, #c6cfdc));
+
+  /* ---------- the device ------------------------------------------------
+     Not themeable on purpose. */
+  --device-bg: #020403;
+  --device-fg: #46e08a;
+
+  /* ---------- back-compat aliases --------------------------------------
+     Older rules (and anything written against the pre-theme palette) keep
+     resolving. Prefer the semantic names above in new code. */
+  --accent: var(--focus);
+  --accent-dim: var(--sel-bg);
+  --amber: var(--warn);
+  --red: var(--err);
+  --blue: var(--info);
+}
+
+/* theme.js sets these on <html> so native form controls, scrollbar gutters
+   and the caret match the workbench. */
+html.vscode-light,
+html.vscode-high-contrast-light { color-scheme: light; }
+html.vscode-dark,
+html.vscode-high-contrast { color-scheme: dark; }
+
+/* High contrast themes want the outline, not the fill. */
+html.vscode-high-contrast .btn,
+html.vscode-high-contrast-light .btn,
+html.vscode-high-contrast .pill,
+html.vscode-high-contrast-light .pill {
+  border-color: var(--vscode-contrastBorder, currentColor);
+}

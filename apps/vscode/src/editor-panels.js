@@ -9,6 +9,7 @@
 // bottom panel, where output belongs.
 
 const vscode = require('vscode');
+const { THEME_BRIDGE } = require('./theme-bridge');
 
 // Only these can be invoked from a panel. A webview must never be a general
 // command channel into the host.
@@ -22,12 +23,12 @@ const TOOLBAR_COMMANDS = [
 
 const TOOLBAR_HTML = `
 <div id="toolbar" data-running="no">
-  <button data-command="erStudio.run" data-when="stopped" class="primary">▶ Run</button>
-  <button data-command="erStudio.stop" data-when="running">■ Stop</button>
-  <button data-command="erStudio.restart" data-when="running">↻ Restart</button>
+  <button data-command="erStudio.run" data-when="stopped" class="primary">Run</button>
+  <button data-command="erStudio.stop" data-when="running">Stop</button>
+  <button data-command="erStudio.restart" data-when="running">Restart</button>
   <button data-command="erStudio.screenshot">Capture</button>
   <span class="spacer"></span>
-  <span id="toolbar-project">no project</span>
+  <span id="toolbar-project">No project</span>
 </div>`;
 
 const TITLES = {
@@ -128,41 +129,55 @@ class EditorPanels {
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'none'; frame-src http://127.0.0.1:${port} http://localhost:${port}; script-src 'unsafe-inline'; style-src 'unsafe-inline';">
 <style>
-  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #080b11; }
+  /* This wrapper is the only part of a panel that lives inside the webview
+     origin, so it can use the --vscode-* variables directly. Everything below
+     the toolbar is the framed page, which gets them via the theme bridge. */
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: var(--vscode-editor-background);
+    color: var(--vscode-foreground);
+  }
   body { display: flex; flex-direction: column; }
   iframe { border: 0; width: 100%; flex: 1 1 auto; min-height: 0; display: block; }
 
+  /* Shaped like an editor toolbar, not a second app's title bar. */
   #toolbar {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 5px 8px;
+    padding: 4px 8px;
     flex: 0 0 auto;
     font-family: var(--vscode-font-family);
-    font-size: 11px;
+    font-size: var(--vscode-font-size, 13px);
     color: var(--vscode-descriptionForeground);
-    background: var(--vscode-editorWidget-background, #11161f);
-    border-bottom: 1px solid var(--vscode-panel-border, rgba(255,255,255,0.08));
+    background: var(--vscode-editorGroupHeader-tabsBackground, var(--vscode-editor-background));
+    border-bottom: 1px solid var(--vscode-panel-border, transparent);
   }
   #toolbar button {
     font: inherit;
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 3px 10px;
+    line-height: 18px;
+    padding: 3px 11px;
     cursor: pointer;
-    border: 0;
-    border-radius: 3px;
-    color: var(--vscode-button-secondaryForeground, #cbd5e1);
-    background: var(--vscode-button-secondaryBackground, rgba(255,255,255,0.08));
+    border: 1px solid var(--vscode-button-border, transparent);
+    border-radius: 2px;
+    color: var(--vscode-button-secondaryForeground);
+    background: var(--vscode-button-secondaryBackground);
   }
-  #toolbar button:hover { opacity: 0.85; }
+  #toolbar button:hover { background: var(--vscode-button-secondaryHoverBackground); }
   #toolbar button.primary {
     color: var(--vscode-button-foreground);
     background: var(--vscode-button-background);
   }
+  #toolbar button.primary:hover { background: var(--vscode-button-hoverBackground); }
+  #toolbar button:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: 2px;
+  }
   #toolbar .spacer { flex: 1 1 auto; }
-  #toolbar #toolbar-project { opacity: 0.75; }
+  #toolbar #toolbar-project { color: var(--vscode-descriptionForeground); }
 
   /* Run and Stop swap rather than both sitting there greyed out. */
   #toolbar[data-running="yes"] [data-when="stopped"],
@@ -177,6 +192,8 @@ ${panelId === 'display' ? TOOLBAR_HTML : ''}
   const frame = document.getElementById('panel');
   const toolbar = document.getElementById('toolbar');
 
+  ${THEME_BRIDGE}
+
   if (toolbar) {
     for (const button of toolbar.querySelectorAll('button[data-command]')) {
       button.addEventListener('click', () => {
@@ -188,6 +205,8 @@ ${panelId === 'display' ? TOOLBAR_HTML : ''}
   window.addEventListener('message', e => {
     const msg = e.data || {};
 
+    if (msg.type === 'er-theme-request') { pushTheme(); return; }
+
     if (msg.type === 'er-command' && frame.contentWindow) {
       frame.contentWindow.postMessage(msg, '*');
       return;
@@ -196,7 +215,7 @@ ${panelId === 'display' ? TOOLBAR_HTML : ''}
     if (msg.type === 'er-state' && toolbar) {
       toolbar.dataset.running = msg.running ? 'yes' : 'no';
       const project = document.getElementById('toolbar-project');
-      if (project) project.textContent = msg.project || 'no project';
+      if (project) project.textContent = msg.project || 'No project';
     }
   });
 </script>

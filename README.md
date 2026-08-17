@@ -28,7 +28,7 @@ Then build the extension:
 git clone https://github.com/gabrielevierti/er-studio
 cd er-studio
 npm install
-npm run package        # -> apps/vscode/er-studio-0.1.5.vsix
+npm run package        # -> apps/vscode/er-studio-0.1.6.vsix
 ```
 
 Extensions sidebar → `…` → **Install from VSIX**. Or open `apps/vscode` in VS Code and press **F5** to run it from source.

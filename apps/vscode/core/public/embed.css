@@ -1,12 +1,24 @@
 /* ER Studio - embedded panel mode
+   ==========================================================================
    Loaded only by /embed. One panel fills the viewport; every piece of IDE
    chrome the host already provides is hidden rather than removed, so app.js
-   and panels.js still find every element they expect. */
+   and panels.js still find every element they expect.
+
+   Light themes used to be handled here with `filter: invert(.92)
+   hue-rotate(180deg)` over the whole panel. That is gone. It produced
+   approximately-inverted colours that matched no theme, broke on any image
+   that had to be inverted back, and made the panel obviously not part of the
+   editor. Light themes now work the same way dark ones do: theme.js applies
+   the real workbench colours and theme.css consumes them.
+   ========================================================================== */
 
 body.embed {
   margin: 0;
   height: 100vh;
   overflow: hidden;
+  /* The host webview already paints its own background; matching it avoids a
+     flash of the wrong colour before the theme message arrives. */
+  background: var(--panel);
 }
 
 /* The host owns these. */
@@ -24,7 +36,7 @@ body.embed #embed-root {
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: var(--bg, #080b11);
+  background: var(--panel);
 }
 
 body.embed #embed-root > .dock-panel {
@@ -41,6 +53,13 @@ body.embed .dock-panel[draggable] {
   -webkit-user-drag: none;
 }
 
+/* Embedded, the panel *is* the view - so its toolbar is the view's toolbar
+   and should sit flush against the workbench, without a second header rule
+   above it. */
+body.embed #embed-root > .dock-panel > .panel-bar {
+  background: transparent;
+}
+
 /* Toasts have no dock to sit above in a 300px-wide sidebar view. */
 body.embed #toast-host {
   left: 8px;
@@ -48,33 +67,23 @@ body.embed #toast-host {
   bottom: 8px;
 }
 
+body.embed .toast { max-width: none; }
+
 body.embed #embed-error {
   padding: 16px;
-  font-size: 12px;
+  font-size: var(--fs-body);
   line-height: 1.6;
-  color: var(--fg-dim, #8fa3bf);
+  color: var(--muted);
 }
 
-/* Light-theme hosts. The panels are designed dark; rather than restyle every
-   one, invert the page's own background layers and leave the simulator mirror
-   (which really is mono green on black) alone. */
-body.embed.theme-light {
-  --bg: #f4f6fa;
-  filter: none;
-}
-
-body.embed.theme-light #embed-root {
-  background: #f4f6fa;
-}
-
-body.embed.theme-light #embed-root > .dock-panel {
-  filter: invert(0.92) hue-rotate(180deg);
-}
-
-/* Anything that is genuinely an image or a device mirror must not be inverted
-   twice. */
-body.embed.theme-light #embed-root canvas,
-body.embed.theme-light #embed-root img,
-body.embed.theme-light #embed-root video {
-  filter: invert(1) hue-rotate(180deg);
+/* A view docked in the sidebar can be very narrow. Let the toolbars wrap
+   rather than clip their last button. */
+@media (max-width: 420px) {
+  body.embed .panel-bar,
+  body.embed #doctor-bar,
+  body.embed #ref-bar {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  body.embed .dock-spacer { flex-basis: 100%; height: 0; }
 }

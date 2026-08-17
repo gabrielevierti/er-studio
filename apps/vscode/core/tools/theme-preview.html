@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ER Studio - theme preview</title>
+
+<!--
+  A development harness, not part of the product. Open it straight off disk -
+  no server, no build, no VS Code:
+
+      open packages/core/tools/theme-preview.html
+
+  It loads the real stylesheets and the real theme.js, then posts itself the
+  same `er-theme` message the webview wrapper posts to a panel. So what you
+  see here is what the panel does, through the same code path.
+
+  The palettes below are the subset of --vscode-* variables ER Studio actually
+  consumes, taken from the shipped themes. They are enough to check contrast,
+  borders and status colours; they are not complete theme definitions.
+
+  Delete this file if it is not earning its place.
+-->
+
+<link rel="stylesheet" href="../public/theme.css">
+<link rel="stylesheet" href="../public/styles.css">
+<link rel="stylesheet" href="../public/sdkref.css">
+<script src="../public/theme.js"></script>
+
+<style>
+  /* Harness chrome only - deliberately outside the token system so it cannot
+     mask a problem in the thing being previewed. */
+  body {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100vh;
+  }
+  #harness {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #111;
+    color: #eee;
+    font: 12px/1.4 system-ui, sans-serif;
+    border-bottom: 1px solid #333;
+  }
+  #harness button {
+    font: inherit;
+    padding: 4px 10px;
+    border-radius: 3px;
+    border: 1px solid #444;
+    background: #1c1c1c;
+    color: #eee;
+    cursor: pointer;
+  }
+  #harness button[aria-pressed="true"] { background: #0078d4; border-color: #0078d4; }
+  #harness .note { margin-left: auto; opacity: 0.55; }
+
+  #stage { overflow: auto; background: var(--panel); }
+  .strip { display: grid; grid-template-columns: 320px minmax(0, 1fr); min-height: 100%; }
+  .col { border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+  .col:last-child { border-right: 0; }
+  .demo-pad { padding: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+</style>
+</head>
+<body>
+
+<div id="harness">
+  <span>Theme:</span>
+  <button data-theme="dark-modern" aria-pressed="true">Dark Modern</button>
+  <button data-theme="light-modern">Light Modern</button>
+  <button data-theme="monokai">Monokai</button>
+  <button data-theme="hc-dark">High Contrast</button>
+  <button data-theme="none">No host (standalone)</button>
+  <span class="note">Every panel below is the shipped markup and the shipped CSS.</span>
+</div>
+
+<div id="stage">
+<div class="strip">
+
+  <!-- A narrow sidebar view: workspace tree + SDK reference list. -->
+  <div class="col">
+    <div class="dock-panel active" style="flex:0 0 auto">
+      <div class="panel-bar">
+        <span class="bar-title">g2-navigator</span>
+        <span class="dock-spacer"></span>
+        <button class="icon-btn">+F</button>
+        <button class="icon-btn">+D</button>
+        <button class="icon-btn" style="font-size:14px">&#8635;</button>
+      </div>
+      <div id="file-tree" class="mono" style="flex:0 0 auto">
+        <div class="tree-node">
+          <div class="tree-row is-dir"><span class="tree-glyph">&#9662;</span>src</div>
+          <div class="tree-children">
+            <div class="tree-row active"><span class="tree-glyph">&#9679;</span>main.js</div>
+            <div class="tree-row"><span class="tree-glyph">&#9679;</span>render.js</div>
+            <div class="tree-row"><span class="tree-glyph">&#9679;</span>ble.js</div>
+          </div>
+        </div>
+        <div class="tree-row"><span class="tree-glyph">&#9679;</span>package.json</div>
+        <div class="tree-row"><span class="tree-glyph">&#9679;</span>README.md</div>
+      </div>
+    </div>
+
+    <div class="dock-panel active" id="dock-sdkref" style="border-top:1px solid var(--border)">
+      <div class="panel-bar" id="ref-bar">
+        <input type="text" id="ref-search" placeholder="search SDK symbols&hellip;">
+        <span class="dock-spacer"></span>
+        <span id="ref-status">412 symbols</span>
+      </div>
+      <div id="ref-body" style="grid-template-columns:minmax(0,1fr)">
+        <div id="ref-list" class="mono">
+          <button class="ref-group-head"><span class="ref-caret">&#9662;</span>Display<span class="ref-count">18</span></button>
+          <button class="ref-item active"><span class="ref-name">DisplayContext</span><span class="ref-kind k-class">class</span></button>
+          <button class="ref-item"><span class="ref-name">drawText</span><span class="ref-kind k-function">fn</span></button>
+          <button class="ref-item"><span class="ref-name">TextAlign</span><span class="ref-kind k-enum">enum</span></button>
+          <button class="ref-item"><span class="ref-name">Renderable</span><span class="ref-kind k-interface">iface</span></button>
+          <button class="ref-item"><span class="ref-name">PixelBuffer</span><span class="ref-kind k-type">type</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- The bottom-panel views. -->
+  <div class="col">
+
+    <div class="zone-tabs" role="tablist">
+      <button class="dock-tab">Terminal</button>
+      <button class="dock-tab">Console<span class="badge">3</span></button>
+      <button class="dock-tab">Simulator console<span class="badge badge-err">2</span></button>
+      <button class="dock-tab active">Doctor<span class="badge badge-warn">1</span></button>
+      <button class="dock-tab">Metrics</button>
+    </div>
+
+    <div class="dock-panel active">
+      <div class="panel-bar" id="doctor-bar">
+        <button class="btn btn-run">Run checks</button>
+        <button class="btn btn-fix">Run fixes</button>
+        <button class="btn btn-ghost">Copy report</button>
+        <label class="doctor-opt"><input type="checkbox" checked> check at launch</label>
+        <span class="dock-spacer"></span>
+        <span class="doctor-summary">
+          <b class="s-pass">7 pass</b> &middot; <b class="s-warn">1 warn</b> &middot; <b class="s-fail">1 fail</b>
+        </span>
+      </div>
+
+      <div class="doctor-scroll">
+        <div class="doctor-group">Toolchain</div>
+
+        <div class="doctor-row" data-status="pass">
+          <div class="doctor-status">PASS</div>
+          <div>
+            <div class="doctor-label">Node.js</div>
+            <div class="doctor-message">v20.11.1 on PATH</div>
+          </div>
+          <button class="doctor-rerun">&#8635;</button>
+        </div>
+
+        <div class="doctor-row" data-status="warn">
+          <div class="doctor-status">WARN</div>
+          <div>
+            <div class="doctor-label">Even Hub CLI</div>
+            <div class="doctor-message">v0.4.2 installed, v0.5.0 available</div>
+            <div class="doctor-fix">
+              <span class="doctor-fix-tag">FIX</span>Update it, then re-run this check.
+              <div class="doctor-cmd"><code>npm install -g evenhub-cli@latest</code></div>
+            </div>
+          </div>
+          <button class="doctor-rerun">&#8635;</button>
+        </div>
+
+        <div class="doctor-row" data-status="fail">
+          <div class="doctor-status">FAIL</div>
+          <div>
+            <div class="doctor-label">Simulator</div>
+            <div class="doctor-message">Not found in /Applications</div>
+            <div class="doctor-detail">Looked in /Applications and ~/Applications.</div>
+            <div class="doctor-fix">
+              <span class="doctor-fix-tag">FIX</span>Download it from the developer portal.
+              <a class="doctor-link" href="#">Docs &#8599;</a>
+            </div>
+          </div>
+          <button class="doctor-rerun">&#8635;</button>
+        </div>
+
+        <div class="doctor-group">Project</div>
+        <div class="doctor-row" data-status="skip">
+          <div class="doctor-status">SKIP</div>
+          <div>
+            <div class="doctor-label">Manifest</div>
+            <div class="doctor-message">No project selected</div>
+          </div>
+          <button class="doctor-rerun">&#8635;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metrics, so the sparkline wells and value colours are visible. -->
+    <div class="metrics-section" style="border-top:1px solid var(--border)">
+      <div class="metrics-head">Display pipeline</div>
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="metric-label">Mirror frame rate</div>
+          <div class="metric-value mono metric-ok">28.4</div>
+          <div class="metric-sub mono">rolling 3 s window</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Frame fetch p50 / p95</div>
+          <div class="metric-value mono">12 / 41 ms</div>
+          <div class="metric-sub mono">round trip to the simulator</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Console errors</div>
+          <div class="metric-value mono metric-bad">2</div>
+          <div class="metric-sub mono">1 warning</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-pad">
+      <button class="btn btn-run">Run</button>
+      <button class="btn">Restart</button>
+      <button class="btn btn-stop">Stop</button>
+      <button class="btn" disabled>Disabled</button>
+      <span class="pill" data-state="on">Vite <b>5173</b></span>
+      <span class="pill" data-state="warn">Sim <b>starting</b></span>
+      <span class="metrics-state" data-state="live">LIVE</span>
+      <select><option>g2-navigator</option></select>
+      <input type="text" placeholder="filter&hellip;">
+    </div>
+
+    <div class="demo-pad" style="align-items:flex-start">
+      <div class="toast">Workspace layout reset</div>
+      <div class="toast error">Simulator exited with code 1</div>
+      <div id="ctx-menu" style="position:static">
+        <div class="ctx-item">Rename</div>
+        <div class="ctx-item">Duplicate</div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item danger">Delete</div>
+      </div>
+    </div>
+
+    <footer id="statusbar" style="padding:4px 12px">
+      <span>workspace: ~/dev/even</span>
+      <span>src/main.js</span>
+      <span id="status-sdk" data-state="warn">sdk: 0.4.2</span>
+      <span class="status-spacer"></span>
+      <span id="status-conn" data-state="on">Connected</span>
+    </footer>
+
+  </div>
+</div>
+</div>
+
+<script>
+/* Subsets of the shipped themes - only the variables ER Studio reads. */
+const PALETTES = {
+  'dark-modern': { kind: 'vscode-dark', vars: {
+    'foreground': '#cccccc', 'descriptionForeground': '#9d9d9d', 'disabledForeground': '#cccccc80',
+    'editor-background': '#1f1f1f', 'editor-foreground': '#cccccc',
+    'panel-background': '#181818', 'sideBar-background': '#181818',
+    'sideBarSectionHeader-background': '#181818', 'panel-border': '#2b2b2b',
+    'widget-border': '#313131', 'widget-shadow': '#0000005c',
+    'editorWidget-background': '#202020', 'editorWidget-border': '#313131',
+    'list-hoverBackground': '#2a2d2e', 'list-activeSelectionBackground': '#04395e',
+    'list-activeSelectionForeground': '#ffffff', 'tree-indentGuidesStroke': '#585858',
+    'focusBorder': '#0078d4', 'sash-hoverBorder': '#0078d4',
+    'button-background': '#0078d4', 'button-foreground': '#ffffff', 'button-hoverBackground': '#026ec1',
+    'button-secondaryBackground': '#313131', 'button-secondaryForeground': '#cccccc',
+    'button-secondaryHoverBackground': '#3c3c3c',
+    'input-background': '#313131', 'input-foreground': '#cccccc', 'input-border': '#3c3c3c',
+    'input-placeholderForeground': '#989898',
+    'dropdown-background': '#313131', 'dropdown-border': '#3c3c3c',
+    'badge-background': '#616161', 'badge-foreground': '#f8f8f8',
+    'textLink-foreground': '#4daafc', 'textCodeBlock-background': '#1f1f1f',
+    'textPreformat-foreground': '#d7ba7d',
+    'editorError-foreground': '#f14c4c', 'editorWarning-foreground': '#cca700',
+    'testing-iconPassed': '#73c991', 'charts-blue': '#3794ff',
+    'scrollbarSlider-background': '#79797966', 'scrollbarSlider-hoverBackground': '#646464b3',
+    'statusBar-background': '#181818', 'statusBar-foreground': '#cccccc',
+    'statusBarItem-errorForeground': '#ffffff', 'statusBarItem-warningForeground': '#ffffff',
+    'panelTitle-activeForeground': '#e7e7e7', 'panelTitle-inactiveForeground': '#9d9d9d',
+    'panelTitle-activeBorder': '#0078d4',
+    'menu-background': '#1f1f1f', 'menu-foreground': '#cccccc',
+    'menu-selectionBackground': '#0078d4', 'menu-selectionForeground': '#ffffff',
+    'menu-border': '#313131', 'menu-separatorBackground': '#313131',
+    'notifications-background': '#1f1f1f', 'notifications-border': '#313131',
+    'toolbar-hoverBackground': '#5a5d5e50',
+    'symbolIcon-classForeground': '#ee9d28', 'symbolIcon-functionForeground': '#b180d7',
+    'symbolIcon-enumeratorForeground': '#ee9d28', 'symbolIcon-interfaceForeground': '#75beff',
+    'font-family': "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+    'font-size': '13px', 'editor-font-family': "Menlo, Monaco, 'Courier New', monospace"
+  }},
+
+  'light-modern': { kind: 'vscode-light', vars: {
+    'foreground': '#3b3b3b', 'descriptionForeground': '#616161', 'disabledForeground': '#61616175',
+    'editor-background': '#ffffff', 'editor-foreground': '#3b3b3b',
+    'panel-background': '#f8f8f8', 'sideBar-background': '#f8f8f8',
+    'sideBarSectionHeader-background': '#f8f8f8', 'panel-border': '#e5e5e5',
+    'widget-border': '#e5e5e5', 'widget-shadow': '#00000029',
+    'editorWidget-background': '#f8f8f8', 'editorWidget-border': '#e5e5e5',
+    'list-hoverBackground': '#f2f2f2', 'list-activeSelectionBackground': '#e8e8e8',
+    'list-activeSelectionForeground': '#000000', 'tree-indentGuidesStroke': '#a9a9a9',
+    'focusBorder': '#005fb8', 'sash-hoverBorder': '#005fb8',
+    'button-background': '#005fb8', 'button-foreground': '#ffffff', 'button-hoverBackground': '#0258a8',
+    'button-secondaryBackground': '#e5e5e5', 'button-secondaryForeground': '#3b3b3b',
+    'button-secondaryHoverBackground': '#cccccc',
+    'input-background': '#ffffff', 'input-foreground': '#3b3b3b', 'input-border': '#cecece',
+    'input-placeholderForeground': '#767676',
+    'dropdown-background': '#ffffff', 'dropdown-border': '#cecece',
+    'badge-background': '#cccccc', 'badge-foreground': '#3b3b3b',
+    'textLink-foreground': '#005fb8', 'textCodeBlock-background': '#f8f8f8',
+    'textPreformat-foreground': '#a31515',
+    'editorError-foreground': '#e51400', 'editorWarning-foreground': '#bf8803',
+    'testing-iconPassed': '#007100', 'charts-blue': '#1976d2',
+    'scrollbarSlider-background': '#64646466', 'scrollbarSlider-hoverBackground': '#646464b3',
+    'statusBar-background': '#f8f8f8', 'statusBar-foreground': '#3b3b3b',
+    'statusBarItem-errorForeground': '#ffffff', 'statusBarItem-warningForeground': '#ffffff',
+    'panelTitle-activeForeground': '#3b3b3b', 'panelTitle-inactiveForeground': '#616161',
+    'panelTitle-activeBorder': '#005fb8',
+    'menu-background': '#ffffff', 'menu-foreground': '#3b3b3b',
+    'menu-selectionBackground': '#005fb8', 'menu-selectionForeground': '#ffffff',
+    'menu-border': '#cecece', 'menu-separatorBackground': '#e5e5e5',
+    'notifications-background': '#ffffff', 'notifications-border': '#e5e5e5',
+    'toolbar-hoverBackground': '#b8b8b850',
+    'symbolIcon-classForeground': '#d67e00', 'symbolIcon-functionForeground': '#652d90',
+    'symbolIcon-enumeratorForeground': '#d67e00', 'symbolIcon-interfaceForeground': '#007acc',
+    'font-family': "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+    'font-size': '13px', 'editor-font-family': "Menlo, Monaco, 'Courier New', monospace"
+  }},
+
+  /* A third-party theme, to prove nothing is hardcoded to the two defaults. */
+  'monokai': { kind: 'vscode-dark', vars: {
+    'foreground': '#ccccc7', 'descriptionForeground': '#a8a8a2', 'disabledForeground': '#75715e',
+    'editor-background': '#272822', 'editor-foreground': '#f8f8f2',
+    'panel-background': '#1e1f1c', 'sideBar-background': '#1e1f1c',
+    'sideBarSectionHeader-background': '#1e1f1c', 'panel-border': '#414339',
+    'widget-border': '#75715e', 'widget-shadow': '#00000066',
+    'editorWidget-background': '#1e1f1c', 'editorWidget-border': '#75715e',
+    'list-hoverBackground': '#3e3d32', 'list-activeSelectionBackground': '#75715e',
+    'list-activeSelectionForeground': '#f8f8f2', 'tree-indentGuidesStroke': '#75715e',
+    'focusBorder': '#a6e22e', 'sash-hoverBorder': '#a6e22e',
+    'button-background': '#75715e', 'button-foreground': '#f8f8f2', 'button-hoverBackground': '#8b8672',
+    'button-secondaryBackground': '#414339', 'button-secondaryForeground': '#ccccc7',
+    'button-secondaryHoverBackground': '#4f5145',
+    'input-background': '#414339', 'input-foreground': '#f8f8f2', 'input-border': '#75715e',
+    'input-placeholderForeground': '#a8a8a2',
+    'dropdown-background': '#414339', 'dropdown-border': '#75715e',
+    'badge-background': '#75715e', 'badge-foreground': '#f8f8f2',
+    'textLink-foreground': '#ae81ff', 'textCodeBlock-background': '#272822',
+    'textPreformat-foreground': '#e6db74',
+    'editorError-foreground': '#f92672', 'editorWarning-foreground': '#e6db74',
+    'testing-iconPassed': '#a6e22e', 'charts-blue': '#66d9ef',
+    'scrollbarSlider-background': '#c1c0b666', 'scrollbarSlider-hoverBackground': '#c1c0b6b3',
+    'statusBar-background': '#414339', 'statusBar-foreground': '#f8f8f2',
+    'statusBarItem-errorForeground': '#f92672', 'statusBarItem-warningForeground': '#e6db74',
+    'panelTitle-activeForeground': '#f8f8f2', 'panelTitle-inactiveForeground': '#a8a8a2',
+    'panelTitle-activeBorder': '#a6e22e',
+    'menu-background': '#1e1f1c', 'menu-foreground': '#ccccc7',
+    'menu-selectionBackground': '#75715e', 'menu-selectionForeground': '#f8f8f2',
+    'menu-border': '#75715e', 'menu-separatorBackground': '#414339',
+    'notifications-background': '#1e1f1c', 'notifications-border': '#75715e',
+    'toolbar-hoverBackground': '#3e3d3280',
+    'symbolIcon-classForeground': '#a6e22e', 'symbolIcon-functionForeground': '#66d9ef',
+    'symbolIcon-enumeratorForeground': '#fd971f', 'symbolIcon-interfaceForeground': '#66d9ef',
+    'font-family': "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+    'font-size': '13px', 'editor-font-family': "Menlo, Monaco, 'Courier New', monospace"
+  }},
+
+  'hc-dark': { kind: 'vscode-high-contrast', vars: {
+    'foreground': '#ffffff', 'descriptionForeground': '#ffffff', 'disabledForeground': '#a6a6a6',
+    'editor-background': '#000000', 'editor-foreground': '#ffffff',
+    'panel-background': '#000000', 'sideBar-background': '#000000',
+    'sideBarSectionHeader-background': '#000000', 'panel-border': '#6fc3df',
+    'widget-border': '#6fc3df', 'contrastBorder': '#6fc3df', 'widget-shadow': '#00000000',
+    'editorWidget-background': '#0c141f', 'editorWidget-border': '#6fc3df',
+    'list-hoverBackground': '#000000', 'list-activeSelectionBackground': '#000000',
+    'list-activeSelectionForeground': '#ffffff', 'list-focusOutline': '#f38518',
+    'tree-indentGuidesStroke': '#6fc3df',
+    'focusBorder': '#f38518', 'sash-hoverBorder': '#f38518',
+    'button-background': '#000000', 'button-foreground': '#ffffff', 'button-hoverBackground': '#0a0a0a',
+    'button-border': '#6fc3df',
+    'button-secondaryBackground': '#000000', 'button-secondaryForeground': '#ffffff',
+    'button-secondaryHoverBackground': '#0a0a0a',
+    'input-background': '#000000', 'input-foreground': '#ffffff', 'input-border': '#6fc3df',
+    'input-placeholderForeground': '#a6a6a6',
+    'dropdown-background': '#000000', 'dropdown-border': '#6fc3df',
+    'badge-background': '#000000', 'badge-foreground': '#ffffff',
+    'textLink-foreground': '#3794ff', 'textCodeBlock-background': '#000000',
+    'textPreformat-foreground': '#d7ba7d',
+    'editorError-foreground': '#f48771', 'editorWarning-foreground': '#ffd700',
+    'testing-iconPassed': '#89d185', 'charts-blue': '#3794ff',
+    'scrollbarSlider-background': '#6fc3df66', 'scrollbarSlider-hoverBackground': '#6fc3dfb3',
+    'statusBar-background': '#000000', 'statusBar-foreground': '#ffffff',
+    'statusBarItem-errorForeground': '#f48771', 'statusBarItem-warningForeground': '#ffd700',
+    'panelTitle-activeForeground': '#ffffff', 'panelTitle-inactiveForeground': '#a6a6a6',
+    'panelTitle-activeBorder': '#f38518',
+    'menu-background': '#000000', 'menu-foreground': '#ffffff',
+    'menu-selectionBackground': '#000000', 'menu-selectionForeground': '#ffffff',
+    'menu-border': '#6fc3df', 'menu-separatorBackground': '#6fc3df',
+    'notifications-background': '#000000', 'notifications-border': '#6fc3df',
+    'toolbar-hoverBackground': '#0a0a0a',
+    'symbolIcon-classForeground': '#ee9d28', 'symbolIcon-functionForeground': '#b180d7',
+    'symbolIcon-enumeratorForeground': '#ee9d28', 'symbolIcon-interfaceForeground': '#75beff',
+    'font-family': "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+    'font-size': '13px', 'editor-font-family': "Menlo, Monaco, 'Courier New', monospace"
+  }}
+};
+
+function show(name) {
+  for (const button of document.querySelectorAll('#harness button')) {
+    button.setAttribute('aria-pressed', String(button.dataset.theme === name));
+  }
+
+  if (name === 'none') {
+    // What you get with no VS Code around it: the fallbacks in theme.css.
+    const style = document.documentElement.style;
+    for (let i = style.length - 1; i >= 0; i--) {
+      const prop = style[i];
+      if (prop.startsWith('--vscode-')) style.removeProperty(prop);
+    }
+    document.documentElement.className = '';
+    document.body.className = '';
+    return;
+  }
+
+  const palette = PALETTES[name];
+  const vars = {};
+  for (const key in palette.vars) vars['--vscode-' + key] = palette.vars[key];
+
+  // Exactly the message the webview wrapper posts to a panel - so this
+  // exercises theme.js rather than reimplementing it.
+  window.postMessage({ type: 'er-theme', kind: palette.kind, vars }, '*');
+}
+
+for (const button of document.querySelectorAll('#harness button')) {
+  button.addEventListener('click', () => show(button.dataset.theme));
+}
+show('dark-modern');
+</script>
+
+</body>
+</html>
