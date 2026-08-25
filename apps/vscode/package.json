@@ -2,7 +2,7 @@
   "name": "er-studio",
   "displayName": "ER Studio",
   "description": "Developer tools for Even Realities G2 (Even Hub) apps - simulator, environment doctor, SDK reference",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "publisher": "gabrielevierti",
   "license": "MIT",
   "author": "Gabriele Vierti",

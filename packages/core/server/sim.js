@@ -86,10 +86,28 @@ function createSimRouter(automationPort) {
     proxyJson(res, `${BASE}/api/console`, { method: 'DELETE' });
   });
 
+  // Input actions.
+  //
+  // The known set is listed for documentation, not enforcement: the simulator
+  // gains actions faster than this file is edited - long press arrived that
+  // way - and hard-coding the list meant a new one could not be used until ER
+  // Studio shipped again. So the shape is validated here (a lowercase
+  // snake_case token, which is all the control plane accepts) and the
+  // simulator itself remains the authority on which of them exist. An
+  // unknown action comes back as its 4xx, which the pad surfaces as a toast.
+  const KNOWN_ACTIONS = [
+    'up', 'down', 'click', 'double_click',
+    'long_press', 'long_press_release'
+  ];
+  const ACTION_RE = /^[a-z][a-z0-9_]{0,31}$/;
+
+  router.get('/actions', (req, res) => res.json({ actions: KNOWN_ACTIONS }));
+
   router.post('/input', (req, res) => {
     const action = (req.body || {}).action;
-    const allowed = new Set(['up', 'down', 'click', 'double_click']);
-    if (!allowed.has(action)) return res.status(400).json({ error: 'Invalid action' });
+    if (typeof action !== 'string' || !ACTION_RE.test(action)) {
+      return res.status(400).json({ error: 'Invalid action' });
+    }
     proxyJson(res, `${BASE}/api/input`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

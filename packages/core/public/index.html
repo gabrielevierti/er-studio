@@ -123,6 +123,9 @@
           <button class="btn pad-btn" data-action="down">Down</button>
           <button class="btn pad-btn" data-action="click">Click</button>
           <button class="btn pad-btn" data-action="double_click">Double click</button>
+          <button class="btn pad-btn pad-hold" data-action="long_press"
+                  data-release="long_press_release"
+                  title="Hold the mouse button down - press and release are sent separately, as the glasses do">Long press</button>
         </div>
       </div>
     </div>
@@ -286,7 +289,7 @@
     <div class="panel-bar" id="ref-bar">
       <input type="text" id="ref-search" class="mono" placeholder="search SDK symbols&hellip;" spellcheck="false">
       <label class="ref-opt mono"><input type="checkbox" id="ref-follow" checked> follow cursor</label>
-      <button class="icon-btn" id="ref-reload" title="Re-read the overlay and the installed SDK">Reload</button>
+      <button class="icon-btn" id="ref-reload" title="Re-check the npm registry for a newer SDK, then reload">Reload</button>
       <span class="dock-spacer"></span>
       <span id="ref-drift" class="mono" hidden></span>
       <span id="ref-status" class="mono">not loaded</span>

@@ -1521,12 +1521,100 @@ $('#btn-snap').addEventListener('click', () => {
   a.click();
 });
 
+// Input pad.
+//
+// Tap actions fire on click. Long press is a hold: the glasses deliver
+// LONG_PRESS and LONG_PRESS_RELEASE as two separate events, and an app that
+// does anything while the press is held (a progress ring, a hold-to-confirm)
+// only behaves correctly if the pad sends them the same way. Sending both
+// back-to-back on one click would make every such app look broken.
+function sendInput(action) {
+  return postJson('/api/sim/input', { action }).catch(err => {
+    const message = String((err && err.message) || '');
+    // A 4xx here means this simulator build does not know the action - worth
+    // saying plainly, since the fix is upgrading the simulator, not retrying.
+    toast(/\b4\d\d\b|invalid|unknown/i.test(message)
+      ? `Simulator rejected "${action}" - upgrade evenhub-simulator`
+      : 'Simulator not reachable - input dropped', true);
+  });
+}
+
 $$('.pad-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    postJson('/api/sim/input', { action: btn.dataset.action })
-      .catch(() => toast('Simulator not reachable - input dropped', true));
+  const release = btn.dataset.release;
+
+  if (!release) {
+    btn.addEventListener('click', () => sendInput(btn.dataset.action));
+    return;
+  }
+
+  let held = false;
+
+  const press = event => {
+    if (held) return;
+    event.preventDefault();
+    held = true;
+    btn.dataset.held = 'yes';
+    sendInput(btn.dataset.action);
+  };
+
+  // pointerup can land anywhere - outside the button, outside the window - and
+  // a press that is never released leaves the app stuck waiting for one.
+  const lift = () => {
+    if (!held) return;
+    held = false;
+    btn.dataset.held = 'no';
+    sendInput(release);
+  };
+
+  btn.addEventListener('pointerdown', press);
+  window.addEventListener('pointerup', lift);
+  window.addEventListener('pointercancel', lift);
+  window.addEventListener('blur', lift);
+
+  // Keyboard parity: space/enter hold while the key repeats, release on keyup.
+  btn.addEventListener('keydown', e => {
+    if (e.key === ' ' || e.key === 'Enter') press(e);
+  });
+  btn.addEventListener('keyup', e => {
+    if (e.key === ' ' || e.key === 'Enter') lift();
   });
 });
+
+/* ---------------- external links ----------------
+
+   Every DOCS button in this UI is a plain <a target="_blank">. In the desktop
+   app that opens a browser tab. Inside VS Code it did nothing at all: the
+   panel page is an iframe inside a webview, and a webview iframe cannot open
+   a top-level window - the click was swallowed with no error, which is why
+   the docs buttons looked dead there.
+
+   So when we are framed, the click is handed up to the host, which opens it
+   with vscode.env.openExternal. One handler, delegated, so every link that
+   exists now or is added later is covered. */
+
+const FRAMED = window.parent !== window;
+
+document.addEventListener('click', event => {
+  const link = event.target.closest && event.target.closest('a[href]');
+  if (!link || !FRAMED) return;
+
+  const href = link.getAttribute('href') || '';
+  if (!/^https?:\/\//i.test(href)) return;
+
+  event.preventDefault();
+  window.parent.postMessage({ type: 'er-open-external', url: link.href }, '*');
+
+  // If nothing up there knows what to do with that - the page is framed by
+  // something other than the extension - fall back to opening it ourselves
+  // rather than silently eating the click a second time.
+  let acked = false;
+  const ack = e => { if (e.data && e.data.type === 'er-open-external-ok') acked = true; };
+  window.addEventListener('message', ack);
+  setTimeout(() => {
+    window.removeEventListener('message', ack);
+    if (!acked) window.open(link.href, '_blank', 'noopener');
+  }, 500);
+}, true);
 
 /* ---------------- glasses console ---------------- */
 

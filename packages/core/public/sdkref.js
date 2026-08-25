@@ -86,7 +86,10 @@
 
     setStatus('loading…');
     try {
-      const data = await api('/api/sdkref?project=' + encodeURIComponent(project));
+      // force also re-checks the registry, so Reload means "get me whatever
+      // Even published since I opened this window".
+      const data = await api('/api/sdkref?project=' + encodeURIComponent(project) +
+                             (force ? '&refresh=1' : ''));
       refState.data = data;
       refState.loadedForProject = project;
       renderList();
@@ -107,13 +110,18 @@
     const d = refState.data;
     if (!d) return;
     const drift = d.drift || {};
-    const bits = [`${d.symbols.length} symbols`];
+    const bits = [`${d.symbols.length} symbols`, `SDK ${d.version}`];
     if (d.source === 'bundled') bits.push('bundled snapshot');
+    if (d.source === 'registry') bits.push('latest published');
+    if (d.updateAvailable) bits.push(`${d.latestPublished} published`);
     setStatus(bits.join(' · '));
 
     const warn = $('#ref-drift');
     const problems = [];
-    if (drift.overlayStale) problems.push(`overlay authored against ${d.overlayAuthoredAgainst}, installed is ${d.version}`);
+    // Signatures always come from a real .d.ts, so a lagging overlay is a
+    // note about the prose, not a warning about the API.
+    if (drift.overlayStale) problems.push(`English notes written for ${d.overlayAuthoredAgainst}, signatures are from ${d.version}`);
+    if (d.updateAvailable) problems.push(`SDK ${d.latestPublished} is published — npm i @evenrealities/even_hub_sdk@latest`);
     if (drift.unparsedExports && drift.unparsedExports.length) problems.push(`${drift.unparsedExports.length} export(s) the parser did not recognise`);
     if (drift.orphanedOverlayEntries && drift.orphanedOverlayEntries.length) problems.push(`${drift.orphanedOverlayEntries.length} overlay entr(y/ies) for symbols that no longer exist`);
     if (drift.symbolsWithoutDocLink && drift.symbolsWithoutDocLink.length) problems.push(`${drift.symbolsWithoutDocLink.length} symbol(s) with no dedicated docs page`);
@@ -126,11 +134,16 @@
   // Same file the panel is built from, handed to the language service so the
   // editor can answer the easy lookups without the panel being open at all.
   async function syncMonacoTypes() {
-    if (!monacoRef || !state.project) return;
-    if (refState.extraLibFor === state.project) return;
+    if (!monacoRef) return;
+
+    // With no project - or a project that has not been installed yet - the
+    // server answers with the latest published types instead of 404ing, so
+    // completion on `bridge.` works from the first keystroke.
+    const key = state.project || '@latest';
+    if (refState.extraLibFor === key) return;
 
     try {
-      const res = await fetch('/api/sdkref/dts?project=' + encodeURIComponent(state.project));
+      const res = await fetch('/api/sdkref/dts?project=' + encodeURIComponent(state.project || ''));
       if (!res.ok) return;
       const dts = await res.text();
 
@@ -142,7 +155,7 @@
       const defaults = monacoRef.languages.typescript.javascriptDefaults;
       refState.extraLibDisposable = defaults.addExtraLib(dts, uri);
       monacoRef.languages.typescript.typescriptDefaults.addExtraLib(dts, uri);
-      refState.extraLibFor = state.project;
+      refState.extraLibFor = key;
     } catch { /* editor still works without types */ }
   }
 
@@ -365,7 +378,12 @@
     });
 
     $('#ref-follow').addEventListener('change', ev => { refState.followCursor = ev.target.checked; });
-    $('#ref-reload').addEventListener('click', () => load(true).then(() => toast('SDK reference reloaded')));
+    $('#ref-reload').addEventListener('click', () => load(true).then(data => {
+      if (!data) return;
+      toast(data.updateAvailable
+        ? `SDK reference reloaded — ${data.latestPublished} is published`
+        : `SDK reference reloaded — ${data.version}`);
+    }));
 
     // Opening the panel is itself a request for the reference.
     const tab = $('.dock-tab[data-dock="sdkref"]');

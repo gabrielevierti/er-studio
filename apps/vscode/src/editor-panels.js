@@ -10,6 +10,7 @@
 
 const vscode = require('vscode');
 const { THEME_BRIDGE } = require('./theme-bridge');
+const { openExternal } = require('./external');
 
 // Only these can be invoked from a panel. A webview must never be a general
 // command channel into the host.
@@ -89,7 +90,9 @@ class EditorPanels {
       if (!msg) return;
       if (msg.type === 'run-command' && TOOLBAR_COMMANDS.includes(msg.command)) {
         vscode.commands.executeCommand(msg.command);
+        return;
       }
+      if (msg.type === 'open-external') openExternal(msg.url);
     });
 
     panel.onDidDispose(() => this.panels.delete(panelId));
@@ -202,8 +205,23 @@ ${panelId === 'display' ? TOOLBAR_HTML : ''}
     }
   }
 
+
+  // The panel page cannot open a browser tab from inside a webview iframe, so
+  // it asks us to. Only http(s) is relayed, and the ack tells the page the
+  // request was taken - without it, it falls back to window.open.
+  function relayExternal(msg, source) {
+    if (!msg || msg.type !== 'er-open-external' || typeof msg.url !== 'string') return false;
+    const ok = msg.url.slice(0, 7) === 'http://' || msg.url.slice(0, 8) === 'https://';
+    if (!ok) return true;
+    vscodeApi.postMessage({ type: 'open-external', url: msg.url });
+    if (source) source.postMessage({ type: 'er-open-external-ok' }, '*');
+    return true;
+  }
+
   window.addEventListener('message', e => {
     const msg = e.data || {};
+
+    if (relayExternal(msg, e.source)) return;
 
     if (msg.type === 'er-theme-request') { pushTheme(); return; }
 

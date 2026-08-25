@@ -8,6 +8,7 @@
 
 const vscode = require('vscode');
 const { THEME_BRIDGE } = require('./theme-bridge');
+const { openExternal } = require('./external');
 
 class PanelViewProvider {
   /**
@@ -25,6 +26,10 @@ class PanelViewProvider {
 
     webviewView.webview.options = { enableScripts: true, portMapping: [] };
     webviewView.webview.html = this.loadingHtml('Starting ER Studio\u2026');
+
+    webviewView.webview.onDidReceiveMessage(msg => {
+      if (msg && msg.type === 'open-external') openExternal(msg.url);
+    });
 
     webviewView.onDidDispose(() => {
       this.view = null;
@@ -108,13 +113,30 @@ class PanelViewProvider {
 <body>
 <iframe id="panel" src="${src}" allow="clipboard-read; clipboard-write"></iframe>
 <script>
+  const vscodeApi = acquireVsCodeApi();
   const frame = document.getElementById('panel');
 
   ${THEME_BRIDGE}
 
+  // The panel page cannot open a browser tab from inside a webview iframe, so
+  // it asks us to. Only http(s) is relayed, and the ack tells the page the
+  // request was taken - without it, it falls back to window.open.
+  function relayExternal(msg, source) {
+    if (!msg || msg.type !== 'er-open-external' || typeof msg.url !== 'string') return false;
+    const ok = msg.url.slice(0, 7) === 'http://' || msg.url.slice(0, 8) === 'https://';
+    if (!ok) return true;
+    vscodeApi.postMessage({ type: 'open-external', url: msg.url });
+    if (source) source.postMessage({ type: 'er-open-external-ok' }, '*');
+    return true;
+  }
+
   // Relay commands from the extension host down into the panel page.
   window.addEventListener('message', e => {
     const msg = e.data || {};
+
+    // A docs link clicked inside the panel: the iframe cannot open a tab, so
+    // it comes up here and goes out to the extension host.
+    if (relayExternal(msg, e.source)) return;
 
     // The panel asks for the theme as soon as its scripts run - answer it.
     if (msg.type === 'er-theme-request') { pushTheme(); return; }

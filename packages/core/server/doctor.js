@@ -861,14 +861,20 @@ const CHECKS = [
         };
       }
 
+      // The overlay lagging the SDK is now the normal state of the world, not
+      // a fault: signatures come from whatever SDK is in play (installed, or
+      // the latest pulled from the registry), while the English notes are
+      // written by hand and catch up afterwards. So this passes with a note -
+      // it used to warn, which meant the panel cried wolf on the morning of
+      // every Even release.
       if (h.overlayStale) {
         const orphans = (h.orphanedOverlayEntries || []).length;
         return {
-          status: 'warn',
-          message: 'Reference overlay was written for a different SDK version',
-          detail: `Installed SDK is ${h.version}. ${orphans ? `${orphans} overlay entr${orphans === 1 ? 'y refers' : 'ies refer'} to symbols that no longer exist. ` : ''}Signatures are still correct - only the English notes may be out of date.`,
+          status: 'pass',
+          message: `${h.symbolCount} symbols from SDK ${h.version} - English notes written for ${h.overlayAuthoredAgainst || 'an older release'}`,
+          detail: `Signatures, parameters and types come from SDK ${h.version} and are current. ${orphans ? `${orphans} overlay entr${orphans === 1 ? 'y refers' : 'ies refer'} to symbols that no longer exist. ` : ''}Only the hand-written English summaries may lag.`,
           fix: {
-            text: 'Regenerate, review the drift report, then bump sdkVersionAuthoredAgainst in data/sdk-overlay.json.',
+            text: 'Optional: refresh the offline snapshot and the notes.',
             command: 'node tools/build-sdk-reference.js'
           }
         };
@@ -876,7 +882,9 @@ const CHECKS = [
 
       return {
         status: 'pass',
-        message: `${h.symbolCount} symbols from SDK ${h.version}${h.source === 'bundled' ? ' (bundled snapshot)' : ''}`,
+        message: `${h.symbolCount} symbols from SDK ${h.version}${
+          h.source === 'bundled' ? ' (bundled snapshot)'
+          : h.source === 'registry' ? ' (latest published)' : ''}`,
         detail: missing
           ? `${missing} symbols have no English overlay entry yet and fall back to the SDK's original Chinese doc comments.`
           : null
